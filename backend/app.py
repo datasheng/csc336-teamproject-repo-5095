@@ -2,6 +2,8 @@
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from routes import auth
+from routes import auth, restaurants
 from database.connection import test_connection, get_db_connection
 
 app = FastAPI(
@@ -54,6 +56,10 @@ def test_db():
         "message": "Database connected successfully!",
         "tables": tables
     }
+
+app.include_router(auth.router)
+app.include_router(auth.router)
+app.include_router(restaurants.router)
 
 if __name__ == '__main__':
     import uvicorn
