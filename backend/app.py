@@ -2,9 +2,9 @@
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routes import auth
-from routes import auth, restaurants
+from routes import auth, restaurants, **orders, reports**
 from database.connection import test_connection, get_db_connection
+**import uvicorn** 
 
 app = FastAPI(
     title="Restaurant Ordering API - Team 5095",
@@ -58,8 +58,9 @@ def test_db():
     }
 
 app.include_router(auth.router)
-app.include_router(auth.router)
 app.include_router(restaurants.router)
+**app.include_router(orders.router)** 
+**app.include_router(reports.router)** 
 
 if __name__ == '__main__':
     import uvicorn
