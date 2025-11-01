@@ -1,6 +1,8 @@
+# backend/routes/orders.py
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import List
+from datetime import datetime, timedelta  # ADD THIS LINE
 from database.queries import (
     create_order, 
     add_order_item, 
@@ -16,11 +18,12 @@ router = APIRouter(prefix="/api/orders", tags=["Orders"])
 class OrderItemRequest(BaseModel):
     MENU_ITEM_ID: int
     QUANTITY: int
-
+    
 class OrderCreate(BaseModel):
     user_id: int
     RESTAURANT_ID: int
     PAYMENT_METHOD: str
+    delivery_address: str
     items: List[OrderItemRequest]
 
 # Place order endpoint
@@ -70,6 +73,8 @@ def place_order(order_data: OrderCreate):
                 price=item['price']
             )
         
+
+
         # 3. Create payment
         create_payment(
             order_id=order_id,
@@ -78,10 +83,12 @@ def place_order(order_data: OrderCreate):
         )
         
         # 4. Create delivery (assign to driver ID 1 for now)
+        estimated_time = datetime.now() + timedelta(minutes=30)
         create_delivery(
             order_id=order_id,
             driver_id=1,
-            delivery_status='ASSIGNED'
+            delivery_address=order_data.delivery_address,
+            estimated_time=estimated_time
         )
         
         # 5. Return order details

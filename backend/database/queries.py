@@ -1,9 +1,11 @@
+# backend/database/queries.py
 """
 Database queries for Restaurant Ordering System
 All queries use raw SQL (no ORM per project requirements)
 """
 
 from database.connection import get_db_connection
+from datetime import datetime, timedelta
 
 # ==================== USER QUERIES ====================
 
@@ -75,7 +77,10 @@ def get_all_restaurants():
     restaurants = cursor.fetchall()
     cursor.close()
     conn.close()
+    estimated_time = datetime.now() + timedelta(minutes=30)
     return restaurants
+
+
 
 def get_restaurant_by_id(restaurant_id):
     """Get restaurant details by ID"""
@@ -115,6 +120,22 @@ def get_restaurant_menu(restaurant_id):
     cursor.close()
     conn.close()
     return menu_items
+
+# ==================== GET MENU ITEM BY ID ====================
+def get_menu_item_by_id(menu_item_id):
+    """Get menu item by ID"""
+    conn = get_db_connection()
+    if not conn:
+        return None
+    
+    cursor = conn.cursor(dictionary=True)
+    query = "SELECT * FROM MENU WHERE MENU_ITEM_ID = %s"
+    cursor.execute(query, (menu_item_id,))
+    menu_item = cursor.fetchone()
+    cursor.close()
+    conn.close()
+    return menu_item
+
 
 # ==================== ORDER QUERIES ====================
 
@@ -240,6 +261,33 @@ def create_payment(order_id, amount, method):
         print(f"Error creating payment: {e}")
         return None
 
+# ==================== CREATE DELIVERY ====================
+
+def create_delivery(order_id, driver_id, delivery_address, estimated_time):
+    """Create a new delivery record"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        query = """
+            INSERT INTO DELIVERIES 
+            (ORDER_ID, DRIVER_ID, DELIVERY_ADDRESS, ESTIMATED_DELIVERY_TIME, STATUS)
+            VALUES (%s, %s, %s, %s, 'ASSIGNED')
+        """
+        
+        cursor.execute(query, (order_id, driver_id, delivery_address, estimated_time))
+        conn.commit()
+        
+        delivery_id = cursor.lastrowid
+        cursor.close()
+        conn.close()
+        
+        return delivery_id
+        
+    except mysql.connector.Error as err:
+        print(f"Database Error: {err}")
+        return None
+
 # ==================== REVENUE REPORT QUERIES ====================
 
 def get_revenue_report():
@@ -248,7 +296,8 @@ def get_revenue_report():
     if not conn:
         return []
     
-    cursor = cursor.cursor(dictionary=True)
+    cursor = conn.cursor(dictionary=True)
+
     query = """
         SELECT 
             r.RESTAURANT_NAME,

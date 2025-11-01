@@ -1,3 +1,4 @@
+# backend/routes/restaurants.py
 from fastapi import APIRouter, HTTPException
 from database.queries import get_all_restaurants, get_restaurant_by_id, get_restaurant_menu
 
