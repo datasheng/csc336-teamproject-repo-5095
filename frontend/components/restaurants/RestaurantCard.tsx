@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { Restaurant } from "@/lib/types";
 import { Star, Clock, DollarSign } from "lucide-react";
 
@@ -10,26 +11,29 @@ export default function RestaurantCard({ restaurant }: RestaurantCardProps) {
   return (
     <Link href={`/restaurants/${restaurant.id}`}>
       <div className="bg-white rounded-3xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden group cursor-pointer transform hover:-translate-y-2">
-        {/* Image Container with decorative elements */}
-        <div className="relative h-56 bg-gradient-to-br from-[#FFE5E0] via-white to-[#E8F5E0] flex items-center justify-center overflow-hidden">
-          {/* Decorative blob shapes */}
-          <div className="absolute top-4 right-4 w-24 h-24 bg-[#FF5722] rounded-full opacity-20 group-hover:scale-150 transition-all duration-700 blur-xl"></div>
-          <div className="absolute bottom-4 left-4 w-20 h-20 bg-[#219d1b] rounded-full opacity-20 group-hover:scale-150 transition-all duration-700 blur-xl"></div>
+        {/* Image Container */}
+        <div className="relative h-56 overflow-hidden">
+          {/* Restaurant Image */}
+          <Image
+            src={restaurant.image}
+            alt={restaurant.name}
+            fill
+            className="object-cover group-hover:scale-110 transition-transform duration-500"
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+          />
           
-          {/* Placeholder for actual image */}
-          <div className="relative z-10 text-7xl group-hover:scale-110 transition-transform duration-300">
-            🍽️
-          </div>
+          {/* Gradient Overlay */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent"></div>
 
           {/* Status Badge */}
           {!restaurant.isOpen && (
-            <div className="absolute top-4 left-4 bg-gradient-to-r from-red-500 to-red-600 text-white text-xs px-4 py-2 rounded-full font-bold shadow-lg">
+            <div className="absolute top-4 left-4 bg-gradient-to-r from-red-500 to-red-600 text-white text-xs px-4 py-2 rounded-full font-bold shadow-lg z-10">
               Closed
             </div>
           )}
 
           {/* Rating Badge */}
-          <div className="absolute bottom-4 right-4 bg-white rounded-2xl px-4 py-2 shadow-lg flex items-center gap-2 group-hover:scale-110 transition-transform duration-300">
+          <div className="absolute bottom-4 right-4 bg-white rounded-2xl px-4 py-2 shadow-lg flex items-center gap-2 group-hover:scale-110 transition-transform duration-300 z-10">
             <Star size={16} className="text-yellow-500 fill-yellow-500" />
             <span className="text-sm font-bold text-[#2C3E50]">{restaurant.rating}</span>
           </div>

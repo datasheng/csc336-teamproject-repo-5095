@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image";
 import { MenuItem } from "@/lib/types";
 import { useCart } from "@/context/CartContext";
 import { Plus } from "lucide-react";
@@ -12,14 +13,20 @@ export default function MenuItemCard({ item }: MenuItemCardProps) {
   const { addToCart } = useCart();
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-4 flex gap-4">
-      <div className="w-24 h-24 bg-gray-200 rounded-lg flex-shrink-0 flex items-center justify-center">
-        <span className="text-xs text-gray-400">Food Image</span>
+    <div className="bg-white rounded-lg shadow-md p-4 flex gap-4 hover:shadow-lg transition-shadow duration-300">
+      <div className="w-24 h-24 rounded-lg flex-shrink-0 relative overflow-hidden">
+        <Image
+          src={item.image}
+          alt={item.name}
+          fill
+          className="object-cover"
+          sizes="96px"
+        />
       </div>
 
       <div className="flex-1">
         <h3 className="font-semibold mb-1">{item.name}</h3>
-        <p className="text-sm text-gray-600 mb-2">{item.description}</p>
+        <p className="text-sm text-gray-600 mb-2 line-clamp-2">{item.description}</p>
         <div className="flex items-center justify-between">
           <span className="text-lg font-bold text-blue-600">
             ${item.price.toFixed(2)}

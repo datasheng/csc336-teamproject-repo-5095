@@ -10,13 +10,13 @@ export default function Home() {
           {/* Left Content */}
           <div className="text-left space-y-6">
             <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold leading-tight">
-              <span className="text-[#FF5722]">Find Your</span>
+              <span className="text-[#FF5722]">Bringing People Together</span>
               <br />
-              <span className="text-[#FF5722]">Best Food</span>
+              <span className="text-[#FF5722]">One Plate at a Time</span>
             </h1>
             
             <p className="text-lg md:text-xl text-[#7F8C8D] max-w-md">
-              Let us help you discover the best food
+              Let's explore the best food Harlem has to offer! 
             </p>
 
             <div className="pt-4">
