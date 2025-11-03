@@ -9,14 +9,16 @@ export default function Home() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
           {/* Left Content */}
           <div className="text-left space-y-6">
-            <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold leading-tight">
-              <span className="text-[#FF5722]">Bringing People Together</span>
-              <br />
-              <span className="text-[#FF5722]">One Plate at a Time</span>
+            <h1 className="text-5xl md:text-6xl lg:text-8xl font-bold leading-tight">
+              <span className="text-[#FF5722]">Taste of Harlem</span>
             </h1>
-            
-            <p className="text-lg md:text-xl text-[#7F8C8D] max-w-md">
-              Let's explore the best food Harlem has to offer! 
+
+            <h2 className="text-2xl md:text-3xl lg:text-4xl font-semibold text-[#2C3E50] max-w-xl leading-snug mt-6">
+              Bringing People Together, One Plate at a Time
+            </h2>
+
+            <p className="text-base md:text-lg text-[#7F8C8D] max-w-md mt-4">
+              Let's explore the best food Harlem has to offer!
             </p>
 
             <div className="pt-4">

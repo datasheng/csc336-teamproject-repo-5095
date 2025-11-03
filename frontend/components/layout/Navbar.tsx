@@ -18,7 +18,7 @@ export default function Navbar() {
               <Store size={24} className="text-white" />
             </div>
             <div className="hidden md:block">
-              <div className="text-xl font-bold text-[#2C3E50]">Team 5095</div>
+              <div className="text-xl font-bold text-[#2C3E50]">Taste of Harlem</div>
               <div className="text-xs text-[#FF5722] font-semibold">Delivery</div>
             </div>
           </Link>
