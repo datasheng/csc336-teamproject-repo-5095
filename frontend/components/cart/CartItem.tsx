@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image";
 import { CartItem as CartItemType } from "@/lib/types";
 import { useCart } from "@/context/CartContext";
 import { Minus, Plus, Trash2 } from "lucide-react";
@@ -13,8 +14,15 @@ export default function CartItem({ item }: CartItemProps) {
 
   return (
     <div className="bg-white rounded-lg shadow-md p-4 flex gap-4">
-      <div className="w-20 h-20 bg-gray-200 rounded-lg flex-shrink-0 flex items-center justify-center">
-        <span className="text-xs text-gray-400">Food</span>
+      {/* Image Container */}
+      <div className="w-20 h-20 rounded-lg flex-shrink-0 relative overflow-hidden">
+        <Image
+          src={item.image}
+          alt={item.name}
+          fill
+          className="object-cover"
+          sizes="80px"
+        />
       </div>
 
       <div className="flex-1">
