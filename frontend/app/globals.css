@@ -1,0 +1,28 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --primary-orange: #FF5722;
+  --primary-coral: #FF6B4A;
+  --primary-green: #219d1b;
+  --bg-light: #F5F5F7;
+}
+
+body {
+  background-color: var(--bg-light);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+}
+
+.btn-primary {
+  @apply bg-[#FF5722] text-white px-8 py-3 rounded-full font-semibold shadow-lg hover:bg-[#E64A19] transition-all duration-300;
+}
+
+.card {
+  @apply bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300;
+}
+
+.card-hover {
+  @apply transform hover:-translate-y-2 transition-all duration-300;
+}
+
