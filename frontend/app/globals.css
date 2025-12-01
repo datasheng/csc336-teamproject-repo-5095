@@ -3,10 +3,17 @@
 @tailwind utilities;
 
 :root {
-  --primary-orange: #FF5722;
-  --primary-coral: #FF6B4A;
-  --primary-green: #219d1b;
-  --bg-light: #F5F5F7;
+  /* CCNY Purple/Lavender Color Scheme */
+  --primary-purple: #5B2C91;        /* Deep CCNY purple */
+  --primary-lavender: #8B6FB0;      /* Lighter lavender */
+  --accent-orange: #FF5722;         /* Orange accent */
+  --accent-coral: #FF6B4A;          /* Coral accent */
+  --accent-gold: #F4B942;           /* Gold/yellow accent */
+  --success-green: #219d1b;         /* Success states */
+  --bg-light: #F5F5F7;              /* Light background */
+  --bg-lavender: #F3EFF8;           /* Lavender tint background */
+  --text-dark: #2C3E50;             /* Dark text */
+  --text-gray: #7F8C8D;             /* Gray text */
 }
 
 body {
@@ -14,10 +21,17 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
 }
 
+/* Primary Button - Purple with orange hover */
 .btn-primary {
-  @apply bg-[#FF5722] text-white px-8 py-3 rounded-full font-semibold shadow-lg hover:bg-[#E64A19] transition-all duration-300;
+  @apply bg-gradient-to-r from-[#5B2C91] to-[#8B6FB0] text-white px-8 py-3 rounded-full font-semibold shadow-lg hover:from-[#6B3CA1] hover:to-[#9B7FC0] transition-all duration-300;
 }
 
+/* Secondary Button - Orange accent */
+.btn-secondary {
+  @apply bg-gradient-to-r from-[#FF5722] to-[#FF6B4A] text-white px-8 py-3 rounded-full font-semibold shadow-lg hover:from-[#E64A19] hover:to-[#FF5722] transition-all duration-300;
+}
+
+/* Card styles */
 .card {
   @apply bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300;
 }
@@ -26,3 +40,39 @@ body {
   @apply transform hover:-translate-y-2 transition-all duration-300;
 }
 
+/* Purple gradient background */
+.bg-purple-gradient {
+  @apply bg-gradient-to-br from-[#F3EFF8] via-white to-[#FFE5E0];
+}
+
+/* Lavender accent elements */
+.accent-lavender {
+  @apply bg-gradient-to-r from-[#8B6FB0] to-[#9B7FC0];
+}
+
+/* Purple text gradient */
+.text-purple-gradient {
+  @apply bg-gradient-to-r from-[#5B2C91] to-[#8B6FB0] bg-clip-text text-transparent;
+}
+
+/* Orange accent for highlights */
+.accent-orange {
+  @apply text-[#FF5722];
+}
+
+/* Status badges */
+.badge-success {
+  @apply bg-gradient-to-r from-[#219d1b] to-[#2ecc71] text-white px-4 py-2 rounded-full text-sm font-bold;
+}
+
+.badge-warning {
+  @apply bg-gradient-to-r from-[#F4B942] to-[#FFB74D] text-white px-4 py-2 rounded-full text-sm font-bold;
+}
+
+.badge-info {
+  @apply bg-gradient-to-r from-[#8B6FB0] to-[#9B7FC0] text-white px-4 py-2 rounded-full text-sm font-bold;
+}
+
+.badge-danger {
+  @apply bg-gradient-to-r from-[#FF5722] to-[#FF6B4A] text-white px-4 py-2 rounded-full text-sm font-bold;
+}
