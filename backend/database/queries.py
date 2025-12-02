@@ -140,18 +140,29 @@ def get_menu_item_by_id(menu_item_id):
 # ==================== ORDER QUERIES ====================
 
 def create_order(user_id, restaurant_id, total_amount):
-    """Create a new order"""
+    """Create a new order with profit tracking"""
     conn = get_db_connection()
     if not conn:
         return None
     
     try:
+        # Calculate commission and fees (business logic)
+        platform_commission = total_amount * 0.15  # 15% commission
+        service_fee = 2.99  # Flat service fee
+        platform_profit = platform_commission + service_fee  # Profit from order
+        
         cursor = conn.cursor()
         query = """
-            INSERT INTO ORDERS (USER_ID, RESTAURANT_ID, TOTAL_AMOUNT)
-            VALUES (%s, %s, %s)
+            INSERT INTO ORDERS (
+                USER_ID, RESTAURANT_ID, TOTAL_AMOUNT,
+                PLATFORM_COMMISSION, SERVICE_FEE, PLATFORM_PROFIT_ORDER
+            )
+            VALUES (%s, %s, %s, %s, %s, %s)
         """
-        cursor.execute(query, (user_id, restaurant_id, total_amount))
+        cursor.execute(query, (
+            user_id, restaurant_id, total_amount,
+            platform_commission, service_fee, platform_profit
+        ))
         conn.commit()
         order_id = cursor.lastrowid
         cursor.close()
@@ -265,6 +276,34 @@ def create_payment(order_id, amount, method):
 
 def create_delivery(order_id, driver_id, delivery_address, estimated_time):
     """Create a new delivery record"""
+    conn = get_db_connection()
+    if not conn:
+        return None
+    
+    try:
+        # Calculate delivery fees
+        delivery_fee_total = 5.99  # Total delivery fee charged to customer
+        delivery_platform_cut = delivery_fee_total * 0.30  # Platform keeps 30%
+        
+        cursor = conn.cursor()
+        query = """
+            INSERT INTO DELIVERIES 
+            (ORDER_ID, DRIVER_ID, ESTIMATED_TIME, DELIVERY_FEE_TOTAL, DELIVERY_PLATFORM_CUT, DELIVERY_STATUS)
+            VALUES (%s, %s, %s, %s, %s, 'ASSIGNED')
+        """
+        cursor.execute(query, (
+            order_id, driver_id, estimated_time,
+            delivery_fee_total, delivery_platform_cut
+        ))
+        conn.commit()
+        delivery_id = cursor.lastrowid
+        cursor.close()
+        conn.close()
+        return delivery_id
+    except Exception as e:
+        print(f"Error creating delivery: {e}")
+        return None
+    """Create a new delivery record"""
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -291,26 +330,25 @@ def create_delivery(order_id, driver_id, delivery_address, estimated_time):
 # ==================== REVENUE REPORT QUERIES ====================
 
 def get_revenue_report():
-    """Get revenue data for Excel export (MANDATORY feature)"""
+    """Get revenue data using INVESTOR_PROFIT_VIEW (MANDATORY feature)"""
     conn = get_db_connection()
     if not conn:
         return []
     
     cursor = conn.cursor(dictionary=True)
-
+    
+    # Query the view Krista created for investor profit tracking
     query = """
         SELECT 
-            r.RESTAURANT_NAME,
-            COUNT(DISTINCT o.ORDER_ID) as TOTAL_ORDERS,
-            SUM(o.TOTAL_AMOUNT) as TOTAL_REVENUE,
-            AVG(o.TOTAL_AMOUNT) as AVG_ORDER_VALUE,
-            COUNT(DISTINCT o.USER_ID) as UNIQUE_CUSTOMERS
-        FROM ORDERS o
-        JOIN RESTAURANT r ON o.RESTAURANT_ID = r.RESTAURANT_ID
-        JOIN PAYMENTS p ON o.ORDER_ID = p.ORDER_ID
-        WHERE p.STATUS = 'COMPLETED'
-        GROUP BY r.RESTAURANT_ID, r.RESTAURANT_NAME
-        ORDER BY TOTAL_REVENUE DESC
+            ORDER_ID,
+            RESTAURANT_NAME,
+            ORDER_DATE,
+            PLATFORM_COMMISSION,
+            SERVICE_FEE,
+            DELIVERY_PLATFORM_CUT,
+            TOTAL_PLATFORM_PROFIT
+        FROM INVESTOR_PROFIT_VIEW
+        ORDER BY ORDER_DATE DESC
     """
     cursor.execute(query)
     report_data = cursor.fetchall()
