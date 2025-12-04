@@ -73,7 +73,7 @@ export default function Navbar() {
             {/* Cart */}
             <Link 
               href="/cart" 
-              className="relative flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#5B2C91] to-[#8B6FB0] text-white hover:from-[#6B3CA1] hover:to-[#9B7FC0] transition-all duration-300 font-semibold shadow-lg hover:shadow-xl"
+              className="relative flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#5B2C91] to-[#5B2C91] text-white hover:from-[#6B3CA1] hover:to-[#9B7FC0] transition-all duration-300 font-semibold shadow-lg hover:shadow-xl"
             >
               <ShoppingCart size={20} />
               <span className="hidden sm:inline">Cart</span>

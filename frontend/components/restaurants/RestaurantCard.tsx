@@ -41,7 +41,7 @@ export default function RestaurantCard({ restaurant }: RestaurantCardProps) {
         
         {/* Content */}
         <div className="p-6">
-          <h3 className="text-2xl font-bold text-[#2C3E50] mb-2 group-hover:text-[#FF5722] transition-colors duration-300">
+          <h3 className="text-2xl font-bold text-[#2C3E50] mb-2 group-hover:text-[#2C3E50] transition-colors duration-300">
             {restaurant.name}
           </h3>
           
@@ -63,7 +63,7 @@ export default function RestaurantCard({ restaurant }: RestaurantCardProps) {
           
           {/* Cuisine Badge & Status */}
           <div className="flex items-center justify-between">
-            <span className="bg-gradient-to-r from-[#FFE5E0] to-[#FFD5D0] text-[#FF5722] px-4 py-2 rounded-full text-sm font-bold">
+            <span className="bg-gradient-to-r from-[#FF5722] to-[#FF5980] text-[#FFFFFF] px-4 py-2 rounded-full text-sm font-bold">
               {restaurant.cuisine}
             </span>
             
@@ -77,7 +77,7 @@ export default function RestaurantCard({ restaurant }: RestaurantCardProps) {
         </div>
 
         {/* Bottom accent line */}
-        <div className="h-1.5 bg-gradient-to-r from-[#FF5722] via-[#FF6B4A] to-[#219d1b] transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left"></div>
+        <div className="h-1.5 bg-gradient-to-r from-[#5B2C91] via-[#8B6FB0] to-[#FF5980] transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left"></div>
       </div>
     </Link>
   );
