@@ -1,0 +1,27 @@
+-- 1. Add a user (customer)
+INSERT INTO USERS (USER_NAME, PASS_WORD, EMAIL, PHONE, ROLES)
+VALUES ('Alice Johnson', 'pw123', 'alice@example.com', '555-1234', 'customer');
+
+-- 2. Add a restaurant
+INSERT INTO RESTAURANT (RESTAURANT_NAME, ADDRESS, PHONE, OWNER_ID)
+VALUES ('Pizza Place', '123 Main St', '555-5678', 1);
+
+-- 3. Add a menu item
+INSERT INTO MENU (ITEM_NAME, ITEM_DESCRIP, PRICE, RESTAURANT_ID)
+VALUES ('Pepperoni Pizza', '12-inch pizza with pepperoni', 14.99, 1);
+
+-- 4. Place an order
+INSERT INTO ORDERS (USER_ID, RESTAURANT_ID, TOTAL_AMOUNT)
+VALUES (1, 1, 14.99);
+
+-- 5. Add an order item
+INSERT INTO ORDER_ITEMS (ORDER_ID, MENU_ITEM_ID, QUANTITY, PRICE)
+VALUES (1, 1, 1, 14.99);
+
+-- 6. Add a payment
+INSERT INTO PAYMENTS (ORDER_ID, AMOUNT, METHOD, STATUS)
+VALUES (1, 14.99, 'CREDIT_CARD', 'COMPLETED');
+
+-- 7. Add a delivery
+INSERT INTO DELIVERIES (ORDER_ID, DRIVER_ID, DELIVERY_STATUS)
+VALUES (1, 1, 'ASSIGNED');
