@@ -70,7 +70,7 @@ const mockOrderHistory = [
 // Favorite restaurants
 const favoriteRestaurants = [
   { id: 1, name: "FUMO Harlem", cuisine: "Italian", rating: 4.6, logo: "🍕" },
-  { id: 2, name: "Cafe One", cuisine: "Caribbean", rating: 4.5, logo: "🍛" },
+  { id: 2, name: "Cafe One", cuisine: "Indian", rating: 4.5, logo: "🍛" },
   { id: 5, name: "Charles Pan Fried Chicken", cuisine: "Southern", rating: 4.8, logo: "🍗" },
 ];
 

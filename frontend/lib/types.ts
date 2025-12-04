@@ -53,6 +53,17 @@ export interface Restaurant {
   PHONE: string | null;
   // Fields from JOIN
   OWNER_NAME?: string;
+  
+  // Frontend display fields (for mock data or API transformation)
+  id?: number;
+  name?: string;
+  image?: string;
+  description?: string;
+  cuisine?: string;
+  rating?: number;
+  deliveryTime?: string;
+  deliveryFee?: number;
+  isOpen?: boolean;
 }
 
 // MENU TABLE

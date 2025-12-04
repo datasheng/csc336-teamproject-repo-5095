@@ -235,7 +235,7 @@ export default function RevenueDashboard() {
               <div className="p-4 border-l-4 border-[#5B2C91] bg-[#F3EFF8] rounded-lg">
                 <h3 className="font-bold text-[#5B2C91] mb-1">📈 Revenue Growth</h3>
                 <p className="text-sm text-[#7F8C8D]">
-                  Platform revenue increased by 12.5% this week compared to last week. Strong performance from Italian and Caribbean cuisines.
+                  Platform revenue increased by 12.5% this week compared to last week. Strong performance from Italian and Indian cuisines.
                 </p>
               </div>
 
