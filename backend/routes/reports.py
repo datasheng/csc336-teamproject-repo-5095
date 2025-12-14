@@ -8,34 +8,35 @@ from io import BytesIO
 from datetime import datetime
 
 router = APIRouter(prefix="/api/reports", tags=["Reports"])
-
 @router.get("/revenue")
 def get_revenue_data():
     """
-    Generate revenue report (JSON format)
-    Returns aggregated revenue data by restaurant
+    Get revenue data for all restaurants
+    Returns aggregated statistics per restaurant
     """
     try:
-        report_data = get_revenue_report()
-
-        if report_data is None:
-            raise HTTPException(
-                status_code=500,
-                detail="Failed to connect to database"
-            )
-
-        return {
-            "success": True,
-            "message": "Revenue report generated",
-            "data": report_data
-        }
-
+        report = get_revenue_report()
+        
+        # Debug logging
+        print(f"🔍 Revenue report type: {type(report)}")
+        print(f"🔍 Revenue report value: {report}")
+        
+        if report is None:
+            print("⚠️ get_revenue_report() returned None")
+            return []  # Return empty array instead of None
+        
+        if not isinstance(report, list):
+            print(f"⚠️ Expected list, got {type(report)}")
+            return []
+        
+        return report
+        
     except Exception as e:
+        print(f"❌ Error in get_revenue_data: {e}")
         raise HTTPException(
             status_code=500,
-            detail=f"Report generation failed: {str(e)}"
+            detail=f"Failed to generate revenue report: {str(e)}"
         )
-
 
 @router.get("/revenue/details")
 def get_detailed_revenue():
