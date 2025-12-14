@@ -80,7 +80,7 @@ export default function Home() {
           </div>
 
           <div className="card p-8 text-center">
-            <Star size={48} className="mx-auto text-[#EFBF04] mb-4" />
+            <Star size={48} className="mx-auto text-[#FFD700] mb-4" />
             <h3 className="text-xl font-bold mb-3">Quality Service</h3>
             <p className="text-gray-600">
               Rated highly by customers for excellent service

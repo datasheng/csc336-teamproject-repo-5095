@@ -23,7 +23,7 @@ export default function RestaurantCard({ restaurant }: RestaurantCardProps) {
   const isOpen = restaurant.isOpen ?? true;
 
   return (
-    <Link href={`/restaurants/${id}`}>
+    <Link href={`/restaurants/${restaurant.RESTAURANT_ID}`}>
       <div className="bg-white rounded-3xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden group cursor-pointer transform hover:-translate-y-2">
         {/* Image Container */}
         <div className="relative h-56 overflow-hidden">
