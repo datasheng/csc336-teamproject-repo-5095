@@ -47,42 +47,39 @@ export async function register(data: {
   });
 }
 
-// TODO: Add when backend implements
-export async function login(email: string, password: string) {
-  // return fetchAPI('/api/auth/login', {
-  //   method: 'POST',
-  //   body: JSON.stringify({ email, password }),
-  // });
-  throw new Error('Login endpoint not implemented yet');
-}
-
 // ==================== RESTAURANT ENDPOINTS ====================
-// These will work once backend implements routes/restaurants.py
 
 export async function getAllRestaurants() {
-  // TODO: Uncomment when backend ready
-  // return fetchAPI('/api/restaurants');
-  
-  // For now, use mock data
-  throw new Error('Restaurant endpoints not implemented yet - using mock data');
+  try {
+    return await fetchAPI('/api/restaurants/');
+  } catch (error) {
+    console.error('Error fetching restaurants:', error);
+    throw error;
+  }
 }
 
 export async function getRestaurantById(id: number) {
-  // TODO: Uncomment when backend ready
-  // return fetchAPI(`/api/restaurants/${id}`);
-  
-  throw new Error('Restaurant endpoints not implemented yet - using mock data');
+  try {
+    const response = await fetchAPI(`/api/restaurants/${id}`);
+    // Backend returns { success: true, restaurant: {...} }
+    // We just want the restaurant object
+    return response.restaurant;
+  } catch (error) {
+    console.error(`Error fetching restaurant ${id}:`, error);
+    throw error;
+  }
 }
 
 export async function getRestaurantMenu(restaurantId: number) {
-  // TODO: Uncomment when backend ready
-  // return fetchAPI(`/api/restaurants/${restaurantId}/menu`);
-  
-  throw new Error('Menu endpoints not implemented yet - using mock data');
+  try {
+    return await fetchAPI(`/api/restaurants/${restaurantId}/menu`);
+  } catch (error) {
+    console.error(`Error fetching menu for restaurant ${restaurantId}:`, error);
+    throw error;
+  }
 }
 
 // ==================== ORDER ENDPOINTS ====================
-// These will work once backend implements routes/orders.py
 
 export async function createOrder(data: {
   RESTAURANT_ID: number;
@@ -94,56 +91,69 @@ export async function createOrder(data: {
   }>;
   PAYMENT_METHOD: string;
 }) {
-  // TODO: Uncomment when backend ready
-  // return fetchAPI('/api/orders', {
-  //   method: 'POST',
-  //   body: JSON.stringify(data),
-  // });
-  
-  throw new Error('Order endpoints not implemented yet - using mock data');
+  try {
+    return await fetchAPI('/api/orders/', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  } catch (error) {
+    console.error('Error creating order:', error);
+    throw error;
+  }
 }
 
 export async function getOrderById(orderId: number) {
-  // TODO: Uncomment when backend ready
-  // return fetchAPI(`/api/orders/${orderId}`);
-  
-  throw new Error('Order endpoints not implemented yet - using mock data');
+  try {
+    return await fetchAPI(`/api/orders/${orderId}`);
+  } catch (error) {
+    console.error(`Error fetching order ${orderId}:`, error);
+    throw error;
+  }
 }
 
 export async function getUserOrders(userId: number) {
-  // TODO: Uncomment when backend ready
-  // return fetchAPI(`/api/users/${userId}/orders`);
-  
-  throw new Error('Order endpoints not implemented yet - using mock data');
+  // This endpoint might not be implemented yet
+  // Fall back gracefully if it fails
+  try {
+    return await fetchAPI(`/api/users/${userId}/orders`);
+  } catch (error) {
+    console.warn('User orders endpoint not available');
+    return [];
+  }
 }
 
 // ==================== REVENUE/DASHBOARD ENDPOINTS ====================
-// These will work once backend implements routes/reports.py
 
 export async function getRevenueReport() {
-  // TODO: Uncomment when backend ready
-  // This should query the INVESTOR_PROFIT_VIEW
-  // return fetchAPI('/api/reports/revenue');
-  
-  throw new Error('Revenue endpoints not implemented yet - using mock data');
+  try {
+    return await fetchAPI('/api/reports/revenue');
+  } catch (error) {
+    console.error('Error fetching revenue report:', error);
+    throw error;
+  }
 }
 
 export async function getPlatformMetrics(params?: {
   startDate?: string;
   endDate?: string;
 }) {
-  // TODO: Uncomment when backend ready
-  // const queryString = new URLSearchParams(params as any).toString();
-  // return fetchAPI(`/api/reports/platform-metrics?${queryString}`);
-  
-  throw new Error('Metrics endpoints not implemented yet - using mock data');
+  try {
+    const queryString = params ? new URLSearchParams(params as any).toString() : '';
+    const endpoint = queryString ? `/api/reports/platform-metrics?${queryString}` : '/api/reports/platform-metrics';
+    return await fetchAPI(endpoint);
+  } catch (error) {
+    console.warn('Platform metrics endpoint not available');
+    return null;
+  }
 }
 
 export async function getRestaurantDashboard(restaurantId: number) {
-  // TODO: Uncomment when backend ready
-  // return fetchAPI(`/api/dashboard/restaurant/${restaurantId}`);
-  
-  throw new Error('Dashboard endpoints not implemented yet - using mock data');
+  try {
+    return await fetchAPI(`/api/dashboard/restaurant/${restaurantId}`);
+  } catch (error) {
+    console.warn('Restaurant dashboard endpoint not available');
+    return null;
+  }
 }
 
 // ==================== EXPORT UTILITIES ====================
@@ -155,7 +165,6 @@ export const api = {
   },
   auth: {
     register,
-    login,
   },
   restaurants: {
     getAll: getAllRestaurants,

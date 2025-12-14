@@ -1,7 +1,6 @@
-// restaurant detail/menu
-"use client"
+"use client";
 
-import { use } from "react";
+import { useMemo } from "react";
 import { getRestaurantById, getMenuItemsByRestaurant } from "@/lib/mockData";
 import MenuItemCard from "@/components/restaurants/MenuItemCard";
 import { Star, Clock, DollarSign, ArrowLeft } from "lucide-react";
@@ -11,29 +10,31 @@ import { notFound } from "next/navigation";
 export default function RestaurantDetailPage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: { id: string };
 }) {
-  const { id } = use(params);
-  const restaurant = getRestaurantById(parseInt(id));
-  const menuItems = getMenuItemsByRestaurant(parseInt(id));
+  const restaurantId = Number(params.id);
 
-  if (!restaurant) {
-    notFound();
-  }
+  const restaurant = useMemo(
+    () => getRestaurantById(restaurantId),
+    [restaurantId]
+  );
+  const menuItems = useMemo(
+    () => getMenuItemsByRestaurant(restaurantId),
+    [restaurantId]
+  );
 
-  // Map database fields to display fields
-  const restaurantName = restaurant.name || restaurant.RESTAURANT_NAME;
-  const restaurantDescription = restaurant.description || `Delicious food from ${restaurantName}`;
-  const restaurantRating = restaurant.rating || 4.5;
-  const restaurantDeliveryTime = restaurant.deliveryTime || "30-45 min";
-  const restaurantDeliveryFee = restaurant.deliveryFee || 2.99;
-  const restaurantCuisine = restaurant.cuisine || "Restaurant";
-  console.log("Restaurant data:", { 
-    id: restaurant.RESTAURANT_ID, 
-    name: restaurantName, 
-    cuisine: restaurant.cuisine,
-    calculatedCuisine: restaurantCuisine 
-  });
+  if (!restaurant) notFound();
+
+  // Always produce a real string name
+  const restaurantName =
+    restaurant.name ?? restaurant.RESTAURANT_NAME ?? "Restaurant";
+
+  const restaurantDescription =
+    restaurant.description ?? `Delicious food from ${restaurantName}`;
+  const restaurantRating = restaurant.rating ?? 4.5;
+  const restaurantDeliveryTime = restaurant.deliveryTime ?? "30-45 min";
+  const restaurantDeliveryFee = restaurant.deliveryFee ?? 2.99;
+  const restaurantCuisine = restaurant.cuisine ?? "Restaurant";
   const restaurantIsOpen = restaurant.isOpen ?? true;
 
   return (
@@ -51,13 +52,19 @@ export default function RestaurantDetailPage({
 
           <div className="flex items-start justify-between">
             <div>
-              <h1 className="text-4xl font-bold mb-2 text-[#2C3E50]">{restaurantName}</h1>
-              <p className="text-[#7F8C8D] mb-4 text-lg">{restaurantDescription}</p>
+              <h1 className="text-4xl font-bold mb-2 text-[#2C3E50]">
+                {restaurantName}
+              </h1>
+              <p className="text-[#7F8C8D] mb-4 text-lg">
+                {restaurantDescription}
+              </p>
 
               <div className="flex items-center gap-6 text-sm text-[#7F8C8D] mb-4">
                 <div className="flex items-center gap-2">
                   <Star size={18} className="text-yellow-500 fill-yellow-500" />
-                  <span className="font-semibold text-[#2C3E50]">{restaurantRating.toFixed(1)}</span>
+                  <span className="font-semibold text-[#2C3E50]">
+                    {restaurantRating.toFixed(1)}
+                  </span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Clock size={18} className="text-[#FF5722]" />
@@ -65,7 +72,9 @@ export default function RestaurantDetailPage({
                 </div>
                 <div className="flex items-center gap-2">
                   <DollarSign size={18} className="text-[#219d1b]" />
-                  <span className="font-medium">${restaurantDeliveryFee.toFixed(2)} delivery</span>
+                  <span className="font-medium">
+                    ${restaurantDeliveryFee.toFixed(2)} delivery
+                  </span>
                 </div>
               </div>
 
@@ -96,13 +105,20 @@ export default function RestaurantDetailPage({
         {menuItems.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {menuItems.map((item) => (
-              <MenuItemCard key={item.MENU_ITEM_ID} item={item} />
+              <MenuItemCard
+                key={item.MENU_ITEM_ID}
+                item={item}
+                restaurantId={restaurantId}
+                restaurantName={restaurantName}
+              />
             ))}
           </div>
         ) : (
           <div className="text-center py-16 bg-white rounded-3xl shadow-lg">
             <div className="text-6xl mb-4">🍽️</div>
-            <h3 className="text-2xl font-bold text-[#2C3E50] mb-2">No Menu Items Available</h3>
+            <h3 className="text-2xl font-bold text-[#2C3E50] mb-2">
+              No Menu Items Available
+            </h3>
             <p className="text-[#7F8C8D]">Check back soon for delicious options!</p>
           </div>
         )}

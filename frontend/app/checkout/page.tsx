@@ -1,52 +1,105 @@
-"use client"
+"use client";
 
-import { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useCart } from "@/context/CartContext";
 import { useRouter } from "next/navigation";
-import { CreditCard, MapPin, User } from "lucide-react";
+import { MapPin, CreditCard } from "lucide-react";
 
 export default function CheckoutPage() {
   const { cartItems, getCartTotal, clearCart } = useCart();
   const router = useRouter();
-  const [isProcessing, setIsProcessing] = useState(false);
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Only fields required by backend
+  const [deliveryAddress, setDeliveryAddress] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState("card"); // "card" | "cash" | "demo"
+
+  // Pricing UI (frontend-only; not sent to backend)
   const subtotal = getCartTotal();
   const deliveryFee = 3.99;
   const tax = subtotal * 0.08;
   const total = subtotal + deliveryFee + tax;
 
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    address: "",
-    city: "",
-    zipCode: "",
-    cardNumber: "",
-    cardExpiry: "",
-    cardCvc: "",
-  });
+  // Backend-required fields derived from cart
+  const restaurantId = useMemo(() => {
+    return cartItems.length > 0 ? cartItems[0].RESTAURANT_ID : null;
+  }, [cartItems]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsProcessing(true);
-
-    // Simulate payment processing
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-
-    // Clear cart and redirect
-    clearCart();
-    router.push("/orders?success=true");
-  };
+  const itemsPayload = useMemo(() => {
+    return cartItems.map((item) => ({
+      MENU_ITEM_ID: item.MENU_ITEM_ID,
+      QUANTITY: item.quantity,
+    }));
+  }, [cartItems]);
 
   if (cartItems.length === 0) {
     router.push("/cart");
     return null;
   }
+
+  // Optional guard: backend expects ONE RESTAURANT_ID per order
+  const hasMultipleRestaurants = useMemo(() => {
+    if (cartItems.length === 0) return false;
+    const first = cartItems[0].RESTAURANT_ID;
+    return cartItems.some((i) => i.RESTAURANT_ID !== first);
+  }, [cartItems]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+
+    if (!restaurantId) {
+      setError("Missing restaurant ID. Please go back and try again.");
+      return;
+    }
+
+    if (hasMultipleRestaurants) {
+      setError("Please checkout items from only one restaurant per order.");
+      return;
+    }
+
+    if (!deliveryAddress.trim()) {
+      setError("Delivery address is required.");
+      return;
+    }
+
+    const orderPayload = {
+      user_id: 1, // TODO: replace with authenticated user id when you add auth
+      RESTAURANT_ID: restaurantId,
+      PAYMENT_METHOD: paymentMethod,
+      delivery_address: deliveryAddress.trim(),
+      items: itemsPayload,
+    };
+
+    try {
+      setIsSubmitting(true);
+
+      // IMPORTANT: replace this URL with your actual API base if different
+      const res = await fetch("http://localhost:8000/api/orders/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(orderPayload),
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || `Failed to place order (HTTP ${res.status})`);
+      }
+
+      // If backend returns order data, grab it
+      // const data = await res.json();
+
+      clearCart();
+      router.push("/orders?success=true");
+    } catch (err: any) {
+      console.error("Place order error:", err);
+      setError(err?.message || "Failed to place order.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -55,119 +108,53 @@ export default function CheckoutPage() {
 
         <form onSubmit={handleSubmit}>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Checkout Form */}
+            {/* Minimal required form */}
             <div className="lg:col-span-2 space-y-6">
-              {/* Delivery Information */}
               <div className="bg-white rounded-lg shadow-md p-6">
                 <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
                   <MapPin size={20} />
-                  Delivery Information
+                  Delivery Address
                 </h2>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <input
-                    type="text"
-                    name="name"
-                    placeholder="Full Name"
-                    required
-                    value={formData.name}
-                    onChange={handleInputChange}
-                    className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  />
-                  <input
-                    type="email"
-                    name="email"
-                    placeholder="Email"
-                    required
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  />
-                  <input
-                    type="tel"
-                    name="phone"
-                    placeholder="Phone Number"
-                    required
-                    value={formData.phone}
-                    onChange={handleInputChange}
-                    className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  />
-                  <input
-                    type="text"
-                    name="address"
-                    placeholder="Street Address"
-                    required
-                    value={formData.address}
-                    onChange={handleInputChange}
-                    className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 md:col-span-2"
-                  />
-                  <input
-                    type="text"
-                    name="city"
-                    placeholder="City"
-                    required
-                    value={formData.city}
-                    onChange={handleInputChange}
-                    className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  />
-                  <input
-                    type="text"
-                    name="zipCode"
-                    placeholder="ZIP Code"
-                    required
-                    value={formData.zipCode}
-                    onChange={handleInputChange}
-                    className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
+                <input
+                  type="text"
+                  name="delivery_address"
+                  placeholder="e.g., 123 Main St, Brooklyn, NY"
+                  required
+                  value={deliveryAddress}
+                  onChange={(e) => setDeliveryAddress(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                />
               </div>
 
-              {/* Payment Information */}
               <div className="bg-white rounded-lg shadow-md p-6">
                 <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
                   <CreditCard size={20} />
-                  Payment Information
+                  Payment Method
                 </h2>
 
-                <div className="space-y-4">
-                  <input
-                    type="text"
-                    name="cardNumber"
-                    placeholder="Card Number"
-                    required
-                    value={formData.cardNumber}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  />
-                  <div className="grid grid-cols-2 gap-4">
-                    <input
-                      type="text"
-                      name="cardExpiry"
-                      placeholder="MM/YY"
-                      required
-                      value={formData.cardExpiry}
-                      onChange={handleInputChange}
-                      className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    />
-                    <input
-                      type="text"
-                      name="cardCvc"
-                      placeholder="CVC"
-                      required
-                      value={formData.cardCvc}
-                      onChange={handleInputChange}
-                      className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <p className="text-xs text-gray-500 flex items-center gap-1">
-                    <CreditCard size={14} />
-                    This is a demo. No real payment will be processed.
-                  </p>
-                </div>
+                <select
+                  value={paymentMethod}
+                  onChange={(e) => setPaymentMethod(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white"
+                >
+                  <option value="card">Card</option>
+                  <option value="cash">Cash</option>
+                </select>
+
+                <p className="text-xs text-gray-500 mt-2">
+                  Payment details are not collected in this demo. This field is only used to satisfy the backend order contract.
+                </p>
               </div>
+
+              {error && (
+                <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg">
+                  {error}
+                </div>
+              )}
             </div>
 
-            {/* Order Summary */}
+            {/* Order Summary (still useful, but not sent to backend) */}
             <div className="lg:col-span-1">
               <div className="bg-white rounded-lg shadow-md p-6 sticky top-4">
                 <h2 className="text-xl font-bold mb-4">Order Summary</h2>
@@ -177,12 +164,16 @@ export default function CheckoutPage() {
                     <p className="text-gray-600 mb-2">
                       {cartItems.length} item{cartItems.length > 1 ? "s" : ""}
                     </p>
+
                     {cartItems.map((item) => (
-                      <div key={item.id} className="flex justify-between mb-1">
+                      <div
+                        key={item.MENU_ITEM_ID}
+                        className="flex justify-between mb-1"
+                      >
                         <span className="text-gray-600">
-                          {item.quantity}x {item.name}
+                          {item.quantity}x {item.ITEM_NAME}
                         </span>
-                        <span>${(item.price * item.quantity).toFixed(2)}</span>
+                        <span>${(item.PRICE * item.quantity).toFixed(2)}</span>
                       </div>
                     ))}
                   </div>
@@ -212,10 +203,10 @@ export default function CheckoutPage() {
 
                 <button
                   type="submit"
-                  disabled={isProcessing}
+                  disabled={isSubmitting}
                   className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition font-semibold disabled:bg-gray-400 disabled:cursor-not-allowed"
                 >
-                  {isProcessing ? "Processing..." : `Pay $${total.toFixed(2)}`}
+                  {isSubmitting ? "Placing order..." : "Place Order"}
                 </button>
               </div>
             </div>
