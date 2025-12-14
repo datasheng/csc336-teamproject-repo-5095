@@ -2,7 +2,7 @@
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routes import auth, restaurants, orders, reports
+from routes import auth, restaurants, orders, reports, deliveries
 from database.connection import test_connection, get_db_connection
 import uvicorn
 
@@ -57,13 +57,14 @@ def test_db():
         "tables": tables
     }
 
+# Register all routers
 app.include_router(auth.router)
 app.include_router(restaurants.router)
 app.include_router(orders.router)
 app.include_router(reports.router)
+app.include_router(deliveries.router)  # ← ADD THIS LINE!
 
 if __name__ == '__main__':
-    import uvicorn
     print("🚀 Starting FastAPI Backend Server...")
     print("📍 Server running at: http://localhost:8000")
     print("📚 API Docs: http://localhost:8000/docs")

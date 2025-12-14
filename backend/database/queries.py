@@ -190,7 +190,7 @@ def add_order_item(order_id, menu_item_id, quantity, price):
         return None
 
 def get_order_details(order_id):
-    """Get complete order details with items"""
+    """Get complete order details with items and delivery info"""
     conn = get_db_connection()
     if not conn:
         return None
@@ -218,6 +218,19 @@ def get_order_details(order_id):
         """
         cursor.execute(query, (order_id,))
         order['items'] = cursor.fetchall()
+        
+        # Get delivery info (NEW)
+        query = """
+            SELECT 
+                d.*,
+                u.USER_NAME as DRIVER_NAME,
+                u.PHONE as DRIVER_PHONE
+            FROM DELIVERIES d
+            LEFT JOIN USERS u ON d.DRIVER_ID = u.USER_ID
+            WHERE d.ORDER_ID = %s
+        """
+        cursor.execute(query, (order_id,))
+        order['delivery'] = cursor.fetchone()
     
     cursor.close()
     conn.close()
@@ -402,3 +415,77 @@ def get_revenue_report():
         cursor.close()
         conn.close()
         return None
+    
+
+# ==================== DELIVERY QUERIES ====================
+
+def get_delivery_by_order_id(order_id):
+    """Get delivery information for an order"""
+    conn = get_db_connection()
+    if not conn:
+        return None
+    
+    cursor = conn.cursor(dictionary=True)
+    query = """
+        SELECT 
+            d.*,
+            u.USER_NAME as DRIVER_NAME,
+            u.PHONE as DRIVER_PHONE
+        FROM DELIVERIES d
+        LEFT JOIN USERS u ON d.DRIVER_ID = u.USER_ID
+        WHERE d.ORDER_ID = %s
+    """
+    cursor.execute(query, (order_id,))
+    delivery = cursor.fetchone()
+    cursor.close()
+    conn.close()
+    return delivery
+
+def get_delivery_by_id(delivery_id):
+    """Get delivery by ID"""
+    conn = get_db_connection()
+    if not conn:
+        return None
+    
+    cursor = conn.cursor(dictionary=True)
+    query = """
+        SELECT 
+            d.*,
+            u.USER_NAME as DRIVER_NAME,
+            u.PHONE as DRIVER_PHONE,
+            o.ORDER_ID,
+            o.TOTAL_AMOUNT
+        FROM DELIVERIES d
+        LEFT JOIN USERS u ON d.DRIVER_ID = u.USER_ID
+        LEFT JOIN ORDERS o ON d.ORDER_ID = o.ORDER_ID
+        WHERE d.DELIVERY_ID = %s
+    """
+    cursor.execute(query, (delivery_id,))
+    delivery = cursor.fetchone()
+    cursor.close()
+    conn.close()
+    return delivery
+
+def update_delivery_status(delivery_id, status):
+    """Update delivery status"""
+    conn = get_db_connection()
+    if not conn:
+        return False
+    
+    try:
+        cursor = conn.cursor()
+        query = """
+            UPDATE DELIVERIES
+            SET DELIVERY_STATUS = %s,
+                ACTUAL_DELIVERY_TIME = CASE WHEN %s = 'DELIVERED' THEN NOW() ELSE ACTUAL_DELIVERY_TIME END
+            WHERE DELIVERY_ID = %s
+        """
+        cursor.execute(query, (status, status, delivery_id))
+        conn.commit()
+        success = cursor.rowcount > 0
+        cursor.close()
+        conn.close()
+        return success
+    except Exception as e:
+        print(f"Error updating delivery status: {e}")
+        return False
