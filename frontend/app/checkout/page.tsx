@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { useCart } from "@/context/CartContext";
 import { useRouter } from "next/navigation";
 import { MapPin, CreditCard } from "lucide-react";
+import { api } from "@/lib/api";
 
 export default function CheckoutPage() {
   const { cartItems, getCartTotal, clearCart } = useCart();
@@ -14,7 +15,45 @@ export default function CheckoutPage() {
 
   // Only fields required by backend
   const [deliveryAddress, setDeliveryAddress] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState("card"); // "card" | "cash" | "demo"
+  const [paymentMethod, setPaymentMethod] = useState("card"); // "card" | "cash"
+  const [userId, setUserId] = useState<number | null>(null);
+
+ useEffect(() => {
+  if (typeof window === "undefined") return;
+
+  // 1) Preferred: auth_user JSON
+  const rawAuth = localStorage.getItem("auth_user");
+  if (rawAuth) {
+    try {
+      const user = JSON.parse(rawAuth);
+      const id = Number(user?.USER_ID);
+      if (Number.isFinite(id)) {
+        setUserId(id);
+        return;
+      }
+    } catch {
+      // ignore and try fallback
+    }
+  }
+
+  // 2) Fallback: user_id string
+  const rawId = localStorage.getItem("user_id");
+  const id2 = rawId ? Number(rawId) : NaN;
+  if (Number.isFinite(id2)) {
+    setUserId(id2);
+    return;
+  }
+
+  // 3) Not logged in
+  router.push("/login?next=/checkout");
+}, [router]);
+
+
+  // Redirect to cart if empty (do this in an effect to avoid render-side navigation)
+  useEffect(() => {
+    if (userId === null) return; // wait for auth guard
+    if (cartItems.length === 0) router.push("/cart");
+  }, [cartItems.length, router]);
 
   // Pricing UI (frontend-only; not sent to backend)
   const subtotal = getCartTotal();
@@ -27,6 +66,7 @@ export default function CheckoutPage() {
     return cartItems.length > 0 ? cartItems[0].RESTAURANT_ID : null;
   }, [cartItems]);
 
+  // Backend only needs MENU_ITEM_ID + QUANTITY (it looks up price server-side)
   const itemsPayload = useMemo(() => {
     return cartItems.map((item) => ({
       MENU_ITEM_ID: item.MENU_ITEM_ID,
@@ -34,12 +74,7 @@ export default function CheckoutPage() {
     }));
   }, [cartItems]);
 
-  if (cartItems.length === 0) {
-    router.push("/cart");
-    return null;
-  }
-
-  // Optional guard: backend expects ONE RESTAURANT_ID per order
+  // Optional guard: backend supports ONE restaurant per order
   const hasMultipleRestaurants = useMemo(() => {
     if (cartItems.length === 0) return false;
     const first = cartItems[0].RESTAURANT_ID;
@@ -49,6 +84,12 @@ export default function CheckoutPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    if (!userId) {
+      setError("Please sign in before checking out.");
+      router.push("/login?next=/checkout");
+      return;
+    }
 
     if (!restaurantId) {
       setError("Missing restaurant ID. Please go back and try again.");
@@ -65,34 +106,31 @@ export default function CheckoutPage() {
       return;
     }
 
-    const orderPayload = {
-      user_id: 1, // TODO: replace with authenticated user id when you add auth
-      RESTAURANT_ID: restaurantId,
-      PAYMENT_METHOD: paymentMethod,
-      delivery_address: deliveryAddress.trim(),
-      items: itemsPayload,
-    };
-
     try {
       setIsSubmitting(true);
 
-      // IMPORTANT: replace this URL with your actual API base if different
-      const res = await fetch("http://localhost:8000/api/orders/", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(orderPayload),
-      });
+      const orderPayload = {
+        user_id: userId,
+        RESTAURANT_ID: restaurantId,
+        PAYMENT_METHOD: paymentMethod,
+        delivery_address: deliveryAddress.trim(),
+        items: itemsPayload,
+      };
 
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || `Failed to place order (HTTP ${res.status})`);
-      }
+      // Uses your api.ts createOrder (which should now match backend schema)
+      const created = await api.orders.create(orderPayload as any);
 
-      // If backend returns order data, grab it
-      // const data = await res.json();
+      // Backend returns get_order_details(order_id) which should include ORDER_ID
+      const orderId =
+        created?.ORDER_ID ??
+        created?.order_id ??
+        created?.ORDER?.ORDER_ID ??
+        null;
 
       clearCart();
-      router.push("/orders?success=true");
+
+      const qs = orderId ? `?success=true&orderId=${orderId}` : `?success=true`;
+      router.push(`/orders${qs}`);
     } catch (err: any) {
       console.error("Place order error:", err);
       setError(err?.message || "Failed to place order.");
@@ -100,6 +138,9 @@ export default function CheckoutPage() {
       setIsSubmitting(false);
     }
   };
+
+  // While auth guard is resolving, render nothing (prevents flicker)
+  if (userId === null) return null;
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -143,7 +184,7 @@ export default function CheckoutPage() {
                 </select>
 
                 <p className="text-xs text-gray-500 mt-2">
-                  Payment details are not collected in this demo. This field is only used to satisfy the backend order contract.
+                  This is a demo. Payment details are not collected; this field is only used to satisfy the backend order contract.
                 </p>
               </div>
 
@@ -154,7 +195,7 @@ export default function CheckoutPage() {
               )}
             </div>
 
-            {/* Order Summary (still useful, but not sent to backend) */}
+            {/* Order Summary (not sent to backend) */}
             <div className="lg:col-span-1">
               <div className="bg-white rounded-lg shadow-md p-6 sticky top-4">
                 <h2 className="text-xl font-bold mb-4">Order Summary</h2>
@@ -194,9 +235,9 @@ export default function CheckoutPage() {
                   </div>
 
                   <div className="border-t pt-2 mt-2">
-                    <div className="flex justify-between text-lg font-bold">
+                    <div className="flex justify-between text-lg font-bold text-[#7F8C8D]:">
                       <span>Total</span>
-                      <span className="text-blue-600">${total.toFixed(2)}</span>
+                      <span className="text-purple-800">${total.toFixed(2)}</span>
                     </div>
                   </div>
                 </div>
@@ -204,7 +245,7 @@ export default function CheckoutPage() {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition font-semibold disabled:bg-gray-400 disabled:cursor-not-allowed"
+                  className="w-full bg-purple-800 text-white py-3 rounded-lg hover:bg-purple-900 transition font-semibold disabled:bg-gray-400 disabled:cursor-not-allowed"
                 >
                   {isSubmitting ? "Placing order..." : "Place Order"}
                 </button>

@@ -47,6 +47,13 @@ export async function register(data: {
   });
 }
 
+export async function login(data: { email: string; password: string }) {
+  return await fetchAPI("/api/auth/login", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
 // ==================== RESTAURANT ENDPOINTS ====================
 
 export async function getAllRestaurants() {
@@ -80,24 +87,41 @@ export async function getRestaurantMenu(restaurantId: number) {
 }
 
 // ==================== ORDER ENDPOINTS ====================
-
-export async function createOrder(data: {
+// Matches backend OrderCreate in backend/routes/orders.py
+export type CreateOrderPayload = {
+  user_id: number;                 
   RESTAURANT_ID: number;
-  USER_ID: number;
+  PAYMENT_METHOD: string;
+  delivery_address: string;    
   items: Array<{
     MENU_ITEM_ID: number;
     QUANTITY: number;
-    PRICE: number;
   }>;
-  PAYMENT_METHOD: string;
-}) {
+};
+
+export async function createOrder(data: CreateOrderPayload) {
   try {
-    return await fetchAPI('/api/orders/', {
-      method: 'POST',
+    // Defensive validation
+    if (!Number.isFinite(data.RESTAURANT_ID)) throw new Error("Invalid RESTAURANT_ID");
+    if (!Number.isFinite(data.user_id)) throw new Error("Invalid user_id");
+    if (!data.PAYMENT_METHOD) throw new Error("Missing PAYMENT_METHOD");
+    if (!data.delivery_address?.trim()) throw new Error("Missing delivery_address");
+    if (!Array.isArray(data.items) || data.items.length === 0) throw new Error("Order must include items");
+
+    // Ensure item quantities are valid
+    for (const it of data.items) {
+      if (!Number.isFinite(it.MENU_ITEM_ID)) throw new Error("Invalid MENU_ITEM_ID");
+      if (!Number.isFinite(it.QUANTITY) || it.QUANTITY <= 0) throw new Error("Invalid QUANTITY");
+    }
+
+    // NOTE: your backend route is prefix "/api/orders" with @post("/")
+    // both "/api/orders" and "/api/orders/" should work; keep it consistent:
+    return await fetchAPI("/api/orders/", {
+      method: "POST",
       body: JSON.stringify(data),
     });
   } catch (error) {
-    console.error('Error creating order:', error);
+    console.error("Error creating order:", error);
     throw error;
   }
 }
@@ -112,13 +136,16 @@ export async function getOrderById(orderId: number) {
 }
 
 export async function getUserOrders(userId: number) {
-  // This endpoint might not be implemented yet
-  // Fall back gracefully if it fails
+  // Keep a safe fallback so the frontend doesn't crash.
   try {
-    return await fetchAPI(`/api/users/${userId}/orders`);
-  } catch (error) {
-    console.warn('User orders endpoint not available');
-    return [];
+    return await fetchAPI(`/api/orders/user/${userId}`);
+  } catch {
+    try {
+      return await fetchAPI(`/api/orders?user_id=${userId}`);
+    } catch {
+      console.warn("User orders endpoint not available");
+      return [];
+    }
   }
 }
 
@@ -165,6 +192,7 @@ export const api = {
   },
   auth: {
     register,
+    login,
   },
   restaurants: {
     getAll: getAllRestaurants,

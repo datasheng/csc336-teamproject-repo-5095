@@ -1,13 +1,42 @@
-"use client"
+"use client";
 
 import Link from "next/link";
 import Image from "next/image";
 import { useCart } from "@/context/CartContext";
 import { ShoppingCart, User, Home, Store, Bell, LayoutDashboard } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { logout } from "@/lib/auth";
+import { useEffect, useState } from "react";
+
+function LogoutButton() {
+  const router = useRouter();
+
+  const handleLogout = () => {
+    logout();
+    router.push("/");
+  };
+
+  return (
+    <button
+      onClick={handleLogout}
+      className="flex items-center gap-2 px-4 py-2 rounded-xl border-2 border-red-600 text-red-600 hover:bg-red-600 hover:text-white transition-all duration-300 font-semibold"
+    >
+      Logout
+    </button>
+  );
+}
 
 export default function Navbar() {
   const { cartItems } = useCart();
   const itemCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    // Minimal auth check
+    const raw = localStorage.getItem("auth_user");
+    setIsLoggedIn(!!raw);
+  }, []);
 
   return (
     <nav className="bg-white shadow-lg sticky top-0 z-50 border-b-2 border-gray-100">
@@ -32,33 +61,32 @@ export default function Navbar() {
 
           {/* Navigation Links */}
           <div className="flex items-center gap-2 md:gap-4">
-            <Link 
-              href="/" 
+            <Link
+              href="/"
               className="flex items-center gap-2 px-4 py-2 rounded-xl text-[#2C3E50] hover:bg-[#F3EFF8] hover:text-[#5B2C91] transition-all duration-300 font-medium"
             >
               <Home size={20} />
               <span className="hidden sm:inline">Home</span>
             </Link>
-            
-            <Link 
-              href="/restaurants" 
+
+            <Link
+              href="/restaurants"
               className="flex items-center gap-2 px-4 py-2 rounded-xl text-[#2C3E50] hover:bg-[#F3EFF8] hover:text-[#5B2C91] transition-all duration-300 font-medium"
             >
               <Store size={20} />
               <span className="hidden sm:inline">Restaurants</span>
             </Link>
-            
-            {/* NEW: Dashboards Link */}
-            <Link 
-              href="/dashboard" 
+
+            <Link
+              href="/dashboard"
               className="flex items-center gap-2 px-4 py-2 rounded-xl text-[#2C3E50] hover:bg-[#F3EFF8] hover:text-[#5B2C91] transition-all duration-300 font-medium"
             >
               <LayoutDashboard size={20} />
               <span className="hidden lg:inline">Dashboards</span>
             </Link>
-            
-            <Link 
-              href="/orders" 
+
+            <Link
+              href="/orders"
               className="hidden md:flex items-center gap-2 px-4 py-2 rounded-xl text-[#2C3E50] hover:bg-[#F3EFF8] hover:text-[#5B2C91] transition-all duration-300 font-medium"
             >
               Orders
@@ -69,10 +97,10 @@ export default function Navbar() {
               <Bell size={20} className="text-[#7F8C8D] group-hover:text-[#5B2C91]" />
               <span className="absolute top-1 right-1 w-2 h-2 bg-[#FF5722] rounded-full"></span>
             </button>
-            
+
             {/* Cart */}
-            <Link 
-              href="/cart" 
+            <Link
+              href="/cart"
               className="relative flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#5B2C91] to-[#5B2C91] text-white hover:from-[#6B3CA1] hover:to-[#9B7FC0] transition-all duration-300 font-semibold shadow-lg hover:shadow-xl"
             >
               <ShoppingCart size={20} />
@@ -83,15 +111,19 @@ export default function Navbar() {
                 </span>
               )}
             </Link>
-            
-            {/* User Profile */}
-            <Link 
-              href="/login" 
-              className="flex items-center gap-2 px-4 py-2 rounded-xl border-2 border-[#5B2C91] text-[#5B2C91] hover:bg-[#5B2C91] hover:text-white transition-all duration-300 font-semibold"
-            >
-              <User size={18} />
-              <span className="hidden md:inline">Login</span>
-            </Link>
+
+            {/* Login vs Logout */}
+            {isLoggedIn ? (
+              <LogoutButton />
+            ) : (
+              <Link
+                href="/login"
+                className="flex items-center gap-2 px-4 py-2 rounded-xl border-2 border-[#5B2C91] text-[#5B2C91] hover:bg-[#5B2C91] hover:text-white transition-all duration-300 font-semibold"
+              >
+                <User size={18} />
+                <span className="hidden md:inline">Login</span>
+              </Link>
+            )}
           </div>
         </div>
       </div>

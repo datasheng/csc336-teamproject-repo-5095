@@ -248,6 +248,26 @@ def get_user_orders(user_id):
     conn.close()
     return orders
 
+def get_orders_for_user(user_id: int):
+    conn = get_db_connection()
+    if not conn:
+        return []
+
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute(
+        """
+        SELECT ORDER_ID
+        FROM ORDERS
+        WHERE USER_ID = %s
+        ORDER BY ORDER_ID DESC
+        """,
+        (user_id,),
+    )
+    rows = cursor.fetchall()
+    cursor.close()
+    conn.close()
+
+    return [r["ORDER_ID"] for r in rows]
 # ==================== PAYMENT QUERIES ====================
 
 def create_payment(order_id, amount, method):

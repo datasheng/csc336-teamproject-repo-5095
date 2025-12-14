@@ -1,15 +1,17 @@
 # backend/routes/orders.py
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 from typing import List
-from datetime import datetime, timedelta  # ADD THIS LINE
+from datetime import datetime, timedelta
+from decimal import Decimal
 from database.queries import (
     create_order, 
     add_order_item, 
     create_payment, 
     create_delivery,
     get_order_details,
-    get_menu_item_by_id
+    get_menu_item_by_id,
+    get_orders_for_user,
 )
 
 router = APIRouter(prefix="/api/orders", tags=["Orders"])
@@ -32,7 +34,7 @@ def place_order(order_data: OrderCreate):
     """Create a new order with items, payment, and delivery"""
     
     # Calculate total and validate items
-    total_amount = 0.0
+    total_amount = Decimal("0.00")
     items_to_process = []
     
     for item in order_data.items:
@@ -44,21 +46,24 @@ def place_order(order_data: OrderCreate):
                 detail=f"Menu item {item.MENU_ITEM_ID} invalid or doesn't belong to this restaurant"
             )
         
-        item_total = menu_item['PRICE'] * item.QUANTITY
+        price = menu_item["PRICE"]          # Decimal from DB
+        item_total = price * item.QUANTITY  # Decimal
         total_amount += item_total
-        
+  
         items_to_process.append({
             "menu_item_id": item.MENU_ITEM_ID,
             "quantity": item.QUANTITY,
-            "price": menu_item['PRICE']
+            "price": price,                 # keep Decimal (or cast to str/float if your query layer needs)
         })
-    
+
     try:
+        total_amount_float = float(total_amount)
+
         # 1. Create main order
         order_id = create_order(
             user_id=order_data.user_id,
             restaurant_id=order_data.RESTAURANT_ID,
-            total_amount=total_amount
+            total_amount=total_amount_float
         )
         
         if not order_id:
@@ -73,12 +78,10 @@ def place_order(order_data: OrderCreate):
                 price=item['price']
             )
         
-
-
         # 3. Create payment
         create_payment(
             order_id=order_id,
-            amount=total_amount,
+            amount=total_amount_float,
             method=order_data.PAYMENT_METHOD
         )
         
@@ -113,3 +116,15 @@ def get_single_order(order_id: int):
         )
     
     return order_details
+
+@router.get("/user/{user_id}")
+def list_user_orders(user_id: int):
+    """List all orders for a user"""
+    order_ids = get_orders_for_user(user_id)
+    # return full details for each order
+    return [get_order_details(oid) for oid in order_ids]
+
+@router.get("/")
+def list_orders(user_id: int = Query(...)):
+    order_ids = get_orders_for_user(user_id)
+    return [get_order_details(oid) for oid in order_ids]
