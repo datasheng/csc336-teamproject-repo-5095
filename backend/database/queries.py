@@ -77,10 +77,7 @@ def get_all_restaurants():
     restaurants = cursor.fetchall()
     cursor.close()
     conn.close()
-    estimated_time = datetime.now() + timedelta(minutes=30)
     return restaurants
-
-
 
 def get_restaurant_by_id(restaurant_id):
     """Get restaurant details by ID"""
@@ -121,7 +118,6 @@ def get_restaurant_menu(restaurant_id):
     conn.close()
     return menu_items
 
-# ==================== GET MENU ITEM BY ID ====================
 def get_menu_item_by_id(menu_item_id):
     """Get menu item by ID"""
     conn = get_db_connection()
@@ -135,7 +131,6 @@ def get_menu_item_by_id(menu_item_id):
     cursor.close()
     conn.close()
     return menu_item
-
 
 # ==================== ORDER QUERIES ====================
 
@@ -249,6 +244,7 @@ def get_user_orders(user_id):
     return orders
 
 def get_orders_for_user(user_id: int):
+    """Get order IDs for a specific user"""
     conn = get_db_connection()
     if not conn:
         return []
@@ -268,6 +264,7 @@ def get_orders_for_user(user_id: int):
     conn.close()
 
     return [r["ORDER_ID"] for r in rows]
+
 # ==================== PAYMENT QUERIES ====================
 
 def create_payment(order_id, amount, method):
@@ -292,7 +289,7 @@ def create_payment(order_id, amount, method):
         print(f"Error creating payment: {e}")
         return None
 
-# ==================== CREATE DELIVERY ====================
+# ==================== DELIVERY QUERIES ====================
 
 def create_delivery(order_id, driver_id, delivery_address, estimated_time):
     """Create a new delivery record"""
@@ -323,55 +320,85 @@ def create_delivery(order_id, driver_id, delivery_address, estimated_time):
     except Exception as e:
         print(f"Error creating delivery: {e}")
         return None
-    """Create a new delivery record"""
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        
-        query = """
-            INSERT INTO DELIVERIES 
-            (ORDER_ID, DRIVER_ID, DELIVERY_ADDRESS, ESTIMATED_DELIVERY_TIME, STATUS)
-            VALUES (%s, %s, %s, %s, 'ASSIGNED')
-        """
-        
-        cursor.execute(query, (order_id, driver_id, delivery_address, estimated_time))
-        conn.commit()
-        
-        delivery_id = cursor.lastrowid
-        cursor.close()
-        conn.close()
-        
-        return delivery_id
-        
-    except mysql.connector.Error as err:
-        print(f"Database Error: {err}")
-        return None
 
 # ==================== REVENUE REPORT QUERIES ====================
 
-def get_revenue_report():
-    """Get revenue data using INVESTOR_PROFIT_VIEW (MANDATORY feature)"""
+def get_revenue_details():
+    """
+    Get detailed revenue data (individual orders from INVESTOR_PROFIT_VIEW)
+    Returns order-by-order profit breakdown
+    """
     conn = get_db_connection()
     if not conn:
-        return []
+        return None
     
     cursor = conn.cursor(dictionary=True)
     
-    # Query the view Krista created for investor profit tracking
-    query = """
-        SELECT 
-            ORDER_ID,
-            RESTAURANT_NAME,
-            ORDER_DATE,
-            PLATFORM_COMMISSION,
-            SERVICE_FEE,
-            DELIVERY_PLATFORM_CUT,
-            TOTAL_PLATFORM_PROFIT
-        FROM INVESTOR_PROFIT_VIEW
-        ORDER BY ORDER_DATE DESC
+    try:
+        query = """
+            SELECT 
+                ORDER_ID,
+                RESTAURANT_NAME,
+                ORDER_DATE,
+                PLATFORM_COMMISSION,
+                SERVICE_FEE,
+                DELIVERY_PLATFORM_CUT,
+                TOTAL_PLATFORM_PROFIT
+            FROM INVESTOR_PROFIT_VIEW
+            ORDER BY ORDER_DATE DESC
+        """
+        
+        cursor.execute(query)
+        results = cursor.fetchall()
+        
+        cursor.close()
+        conn.close()
+        
+        return results
+        
+    except Exception as e:
+        print(f"Error getting revenue details: {e}")
+        cursor.close()
+        conn.close()
+        return None
+
+
+def get_revenue_report():
     """
-    cursor.execute(query)
-    report_data = cursor.fetchall()
-    cursor.close()
-    conn.close()
-    return report_data
+    Get aggregated revenue report by restaurant (for Excel export)
+    Returns summary with total orders, revenue, avg order value, unique customers per restaurant
+    """
+    conn = get_db_connection()
+    if not conn:
+        return None
+    
+    cursor = conn.cursor(dictionary=True)
+    
+    try:
+        query = """
+            SELECT 
+                r.RESTAURANT_NAME,
+                COUNT(DISTINCT o.ORDER_ID) as TOTAL_ORDERS,
+                COALESCE(SUM(o.TOTAL_AMOUNT), 0) as TOTAL_REVENUE,
+                COALESCE(AVG(o.TOTAL_AMOUNT), 0) as AVG_ORDER_VALUE,
+                COUNT(DISTINCT o.USER_ID) as UNIQUE_CUSTOMERS
+            FROM RESTAURANT r
+            LEFT JOIN ORDERS o ON r.RESTAURANT_ID = o.RESTAURANT_ID
+            WHERE o.ORDER_ID IS NOT NULL
+            GROUP BY r.RESTAURANT_ID, r.RESTAURANT_NAME
+            ORDER BY TOTAL_REVENUE DESC
+        """
+        
+        cursor.execute(query)
+        results = cursor.fetchall()
+        
+        cursor.close()
+        conn.close()
+        
+        return results
+        
+    except Exception as e:
+        print(f"Error generating revenue report: {e}")
+        cursor.close()
+        conn.close()
+        return None
