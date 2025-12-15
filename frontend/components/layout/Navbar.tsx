@@ -3,17 +3,15 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useCart } from "@/context/CartContext";
-import { ShoppingCart, User, Home, Store, Bell, LayoutDashboard } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { ShoppingCart, User, Home, Store, LayoutDashboard, BarChart3, Receipt } from "lucide-react";
 import { logout } from "@/lib/auth";
 import { useEffect, useState } from "react";
 
 function LogoutButton() {
-  const router = useRouter();
-
   const handleLogout = () => {
     logout();
-    router.push("/");
+    // Force full page reload to reset all React state
+    window.location.href = "/";
   };
 
   return (
@@ -31,11 +29,31 @@ export default function Navbar() {
   const itemCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
 
   useEffect(() => {
-    // Minimal auth check
-    const raw = localStorage.getItem("auth_user");
-    setIsLoggedIn(!!raw);
+    // Check auth state on mount and when localStorage changes
+    const checkAuth = () => {
+      const raw = localStorage.getItem("auth_user");
+      setIsLoggedIn(!!raw);
+      
+      if (raw) {
+        try {
+          const user = JSON.parse(raw);
+          setUserRole(user?.ROLES || null);
+        } catch {
+          setUserRole(null);
+        }
+      } else {
+        setUserRole(null);
+      }
+    };
+
+    checkAuth();
+
+    // Listen for storage changes (useful if logout happens in another tab)
+    window.addEventListener("storage", checkAuth);
+    return () => window.removeEventListener("storage", checkAuth);
   }, []);
 
   return (
@@ -85,18 +103,22 @@ export default function Navbar() {
               <span className="hidden lg:inline">Dashboards</span>
             </Link>
 
+            {/* Admin Revenue - visible for demo purposes */}
+            <Link
+              href="/admin/revenue"
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-[#2C3E50] hover:bg-[#F3EFF8] hover:text-[#5B2C91] transition-all duration-300 font-medium"
+            >
+              <BarChart3 size={20} />
+              <span className="hidden lg:inline">Revenue</span>
+            </Link>
+
             <Link
               href="/orders"
               className="hidden md:flex items-center gap-2 px-4 py-2 rounded-xl text-[#2C3E50] hover:bg-[#F3EFF8] hover:text-[#5B2C91] transition-all duration-300 font-medium"
             >
-              Orders
+              <Receipt size={20} className="text-[#7F8C8D] group-hover:text-[#5B2C91]" />
+              <span>Orders</span>
             </Link>
-
-            {/* Notifications */}
-            <button className="relative p-2 rounded-xl hover:bg-[#F3EFF8] transition-all duration-300 group">
-              <Bell size={20} className="text-[#7F8C8D] group-hover:text-[#5B2C91]" />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-[#FF5722] rounded-full"></span>
-            </button>
 
             {/* Cart */}
             <Link

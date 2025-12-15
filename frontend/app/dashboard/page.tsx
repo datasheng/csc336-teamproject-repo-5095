@@ -1,14 +1,14 @@
 "use client"
 
 import Link from "next/link";
-import { BarChart3, Store, User, ArrowLeft } from "lucide-react";
+import { BarChart3, Store, ArrowLeft } from "lucide-react";
 
 export default function DashboardNav() {
   const dashboards = [
     {
       name: "Revenue Analytics",
       description: "Platform profit & investor metrics",
-      href: "/dashboard/revenue",
+      href: "/admin/revenue",
       icon: BarChart3,
       color: "from-[#5B2C91] to-[#8B6FB0]",
       role: "Investor/Admin",
@@ -16,21 +16,12 @@ export default function DashboardNav() {
     },
     {
       name: "Restaurant Portal",
-      description: "Manage orders & menu",
+      description: "Manage orders & view performance",
       href: "/dashboard/restaurant",
       icon: Store,
       color: "from-[#FF5722] to-[#FF6B4A]",
       role: "Restaurant Owner",
       emoji: "🍽️"
-    },
-    {
-      name: "Customer Profile",
-      description: "Order history & favorites",
-      href: "/dashboard/customer",
-      icon: User,
-      color: "from-[#F4B942] to-[#FFB74D]",
-      role: "Customer",
-      emoji: "👤"
     }
   ];
 
@@ -49,15 +40,15 @@ export default function DashboardNav() {
         {/* Header */}
         <div className="text-center mb-12">
           <h1 className="text-5xl font-bold text-[#2C3E50] mb-4">
-            Dashboard <span className="text-purple-gradient">Access</span>
+            Dashboard <span className="text-[#5B2C91]">Access</span>
           </h1>
           <p className="text-xl text-[#7F8C8D]">
-            Select your role to access the appropriate dashboard
+            Select your dashboard to view analytics and manage operations
           </p>
         </div>
 
         {/* Dashboard Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
           {dashboards.map((dashboard) => (
             <Link
               key={dashboard.href}
@@ -102,14 +93,14 @@ export default function DashboardNav() {
           ))}
         </div>
 
-        {/* Quick Access Note */}
+        {/* Info Note */}
         <div className="mt-12 max-w-3xl mx-auto bg-white rounded-2xl shadow-lg p-6 border-l-4 border-[#5B2C91]">
           <h3 className="font-bold text-[#2C3E50] mb-2 flex items-center gap-2">
-            💡 Demo Navigation
+            💡 Access Information
           </h3>
           <p className="text-[#7F8C8D]">
-            For the presentation, you can navigate directly to any dashboard using these cards. 
-            The <span className="font-semibold text-[#5B2C91]">Revenue Analytics</span> dashboard is critical for showing investor-focused metrics.
+            <span className="font-semibold text-[#5B2C91]">Revenue Analytics</span> is available to all users for demo purposes. 
+            <span className="font-semibold text-[#FF5722]"> Restaurant Portal</span> requires a restaurant owner account.
           </p>
         </div>
       </div>

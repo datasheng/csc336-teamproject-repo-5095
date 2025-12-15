@@ -35,7 +35,9 @@ export default function LoginPage() {
   useEffect(() => {
     try {
       const raw = localStorage.getItem(AUTH_STORAGE_KEY);
-      if (raw) router.push(redirectTo);
+      if (raw) {
+        window.location.href = redirectTo;
+      }
     } catch {
       // ignore
     }
@@ -98,7 +100,7 @@ export default function LoginPage() {
           ROLES: "customer",
         };
         localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(createdUser));
-        router.push(redirectTo);
+        window.location.href = redirectTo;
         return;
       }
 
@@ -109,7 +111,7 @@ export default function LoginPage() {
 
       localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user));
       localStorage.setItem("user_id", String(user.USER_ID));
-      router.push(redirectTo);
+      window.location.href = redirectTo;
     } catch (err: any) {
       setErrorMsg(err?.message || "Something went wrong.");
     } finally {
@@ -227,7 +229,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setErrorMsg("Forgot password is not implemented yet.")}
-                  className="text-[#z5B2C91] font-semibold hover:text-[#E64A19]"
+                  className="text-[#5B2C91] font-semibold hover:text-[#E64A19]"
                 >
                   Forgot password?
                 </button>
