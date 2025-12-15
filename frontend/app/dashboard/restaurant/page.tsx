@@ -248,16 +248,6 @@ export default function RestaurantDashboardPage() {
           <p className="text-sm text-gray-500 mb-6">
             Logged in as: <span className="font-medium">{user?.EMAIL}</span>
           </p>
-          
-          <div className="bg-[#FFF3E0] border border-[#FFE0B2] rounded-xl p-4 mb-6 text-left">
-            <p className="text-sm text-[#E65100] font-medium mb-2">
-              🔑 Demo Restaurant Owner Login:
-            </p>
-            <p className="text-xs text-[#F57C00] font-mono">
-              Email: owner@fumoharlem.com<br/>
-              Password: FumoOwner2024!
-            </p>
-          </div>
 
           <div className="flex gap-3">
             <Link
