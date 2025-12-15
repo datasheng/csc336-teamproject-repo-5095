@@ -33,6 +33,7 @@ interface RevenueData {
   TOTAL_REVENUE: number;
   AVG_ORDER_VALUE: number;
   UNIQUE_CUSTOMERS: number;
+  PLATFORM_COMMISSION: number;
 }
 
 type ViewMode = "table" | "tableau";
@@ -56,6 +57,9 @@ export default function AdminRevenuePage() {
   const [revenue, setRevenue] = useState<RevenueData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const DELIVERY_COMMISSION_PER_ORDER = 0.60;
+  const SERVICE_FEE_PER_ORDER = 2.99;
 
   // Investor-only guard (NO redirect; show UI states)
   useEffect(() => {
@@ -119,10 +123,20 @@ export default function AdminRevenuePage() {
   // Totals
   const totals = {
     restaurants: revenue.length,
+
     orders: revenue.reduce((sum, r) => sum + (r.TOTAL_ORDERS || 0), 0),
+
     revenue: revenue.reduce((sum, r) => sum + (r.TOTAL_REVENUE || 0), 0),
+
     customers: revenue.reduce((sum, r) => sum + (r.UNIQUE_CUSTOMERS || 0), 0),
+
+    platformCommission: revenue.reduce((sum, r) => sum + (r.PLATFORM_COMMISSION || 0), 0),
   };
+
+  const serviceFeeRevenue = totals.orders * SERVICE_FEE_PER_ORDER;
+  const deliveryCommissionRevenue = totals.orders * DELIVERY_COMMISSION_PER_ORDER;
+  const totalPlatformRevenue = totals.platformCommission + serviceFeeRevenue + deliveryCommissionRevenue;
+
 
   // Login Required UI (no redirect)
   if (accessState === "not_logged_in") {
@@ -244,25 +258,60 @@ export default function AdminRevenuePage() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Summary Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-8">
           <div className="bg-white rounded-xl shadow-md p-5 border-l-4 border-orange-500">
-            <p className="text-gray-500 text-sm font-medium">Total Restaurants</p>
-            <p className="text-3xl font-bold text-orange-600 mt-1">{totals.restaurants}</p>
+            <p className="text-gray-500 text-sm font-medium">Restaurants</p>
+            <p className="text-3xl font-bold text-orange-600 mt-1">
+              {totals.restaurants}
+            </p>
           </div>
+
           <div className="bg-white rounded-xl shadow-md p-5 border-l-4 border-blue-500">
             <p className="text-gray-500 text-sm font-medium">Total Orders</p>
-            <p className="text-3xl font-bold text-blue-600 mt-1">{totals.orders}</p>
+            <p className="text-3xl font-bold text-blue-600 mt-1">
+              {totals.orders}
+            </p>
           </div>
+
           <div className="bg-white rounded-xl shadow-md p-5 border-l-4 border-green-500">
-            <p className="text-gray-500 text-sm font-medium">Total Revenue</p>
-            <p className="text-3xl font-bold text-green-600 mt-1">${totals.revenue.toFixed(2)}</p>
+            <p className="text-gray-500 text-sm font-medium">Gross Order Revenue</p>
+            <p className="text-3xl font-bold text-green-600 mt-1">
+              ${totals.revenue.toFixed(2)}
+            </p>
           </div>
+
           <div className="bg-white rounded-xl shadow-md p-5 border-l-4 border-purple-500">
-            <p className="text-gray-500 text-sm font-medium">Total Customers</p>
-            <p className="text-3xl font-bold text-purple-600 mt-1">{totals.customers}</p>
+            <p className="text-gray-500 text-sm font-medium">Restaurant Commissions</p>
+            <p className="text-3xl font-bold text-purple-600 mt-1">
+              ${totals.platformCommission.toFixed(2)}
+            </p>
+          </div>
+
+          <div className="bg-white rounded-xl shadow-md p-5 border-l-4 border-yellow-500">
+            <p className="text-gray-500 text-sm font-medium">Service Fees</p>
+            <p className="text-3xl font-bold text-yellow-600 mt-1">
+              ${serviceFeeRevenue.toFixed(2)}
+            </p>
+          </div>
+
+          <div className="bg-white rounded-xl shadow-md p-5 border-l-4 border-red-500">
+            <p className="text-gray-500 text-sm font-medium">Delivery Commission</p>
+            <p className="text-3xl font-bold text-red-600 mt-1">
+              ${deliveryCommissionRevenue.toFixed(2)}
+            </p>
           </div>
         </div>
 
+        <div className="bg-gradient-to-r from-[#5B2C91] to-[#7B4CB1] text-white rounded-xl p-6 mb-6 shadow-lg">
+          <p className="text-sm opacity-90">Total Platform Revenue</p>
+          <p className="text-4xl font-bold mt-1">
+            ${totalPlatformRevenue.toFixed(2)}
+          </p>
+          <p className="text-sm opacity-80 mt-1">
+            Includes restaurant commissions, service fees, and delivery commission
+          </p>
+        </div>        
+        
         {viewMode === "table" ? (
           <div className="space-y-6">
             <button
