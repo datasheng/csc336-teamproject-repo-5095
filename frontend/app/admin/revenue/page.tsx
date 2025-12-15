@@ -1,8 +1,31 @@
 // frontend/app/admin/revenue/page.tsx
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { BarChart3, Table, Download, TrendingUp } from 'lucide-react';
+import { useState, useEffect } from "react";
+import { BarChart3, Table, Download, TrendingUp } from "lucide-react";
+import { useRouter, usePathname } from "next/navigation";
+
+type AuthUser = {
+  USER_ID: number;
+  USER_NAME: string;
+  EMAIL: string;
+  ROLES: "customer" | "restaurant_owner" | "driver" | "investor";
+};
+
+function getAuthUser(): AuthUser | null {
+  if (typeof window === "undefined") return null;
+  const raw = localStorage.getItem("auth_user");
+  if (!raw) return null;
+
+  try {
+    const parsed = JSON.parse(raw);
+    const role = parsed?.ROLES ?? parsed?.role;
+    if (!role) return null;
+    return { ...parsed, ROLES: role } as AuthUser;
+  } catch {
+    return null;
+  }
+}
 
 interface RevenueData {
   RESTAURANT_NAME: string;
@@ -12,35 +35,66 @@ interface RevenueData {
   UNIQUE_CUSTOMERS: number;
 }
 
-type ViewMode = 'table' | 'tableau';
+type ViewMode = "table" | "tableau";
 
 export default function AdminRevenuePage() {
-  const [viewMode, setViewMode] = useState<ViewMode>('table');
+  const router = useRouter();
+  const pathname = usePathname();
+
+  // Gate + role
+  const [allowed, setAllowed] = useState(false);
+
+  // Page state
+  const [viewMode, setViewMode] = useState<ViewMode>("table");
   const [revenue, setRevenue] = useState<RevenueData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // 1) Investor-only route guard
   useEffect(() => {
-    fetch('http://localhost:8000/api/reports/revenue')
-      .then(res => res.json())
-      .then(data => {
+    const user = getAuthUser();
+
+    // Guest
+    if (!user) {
+      router.replace(`/login?next=${encodeURIComponent(pathname)}`);
+      return;
+    }
+
+    // Not investor
+    if (user.ROLES !== "investor") {
+      router.replace("/dashboard");
+      return;
+    }
+
+    setAllowed(true);
+  }, [router, pathname]);
+
+  // 2) Fetch only after allowed
+  useEffect(() => {
+    if (!allowed) return;
+
+    setLoading(true);
+    setError(null);
+
+    fetch("http://localhost:8000/api/reports/revenue")
+      .then((res) => res.json())
+      .then((data) => {
         if (Array.isArray(data)) {
           setRevenue(data);
-        } else if (data.data && Array.isArray(data.data)) {
+        } else if (data?.data && Array.isArray(data.data)) {
           setRevenue(data.data);
         } else {
-          setError('Invalid data format received from server');
+          setError("Invalid data format received from server");
         }
-        setLoading(false);
       })
-      .catch(error => {
-        setError(error.message);
-        setLoading(false);
-      });
-  }, []);
+      .catch((err) => {
+        setError(err?.message || "Failed to load revenue data");
+      })
+      .finally(() => setLoading(false));
+  }, [allowed]);
 
   const downloadExcel = () => {
-    window.open('http://localhost:8000/api/reports/revenue/excel', '_blank');
+    window.open("http://localhost:8000/api/reports/revenue/excel", "_blank");
   };
 
   // Calculate totals
@@ -50,6 +104,15 @@ export default function AdminRevenuePage() {
     revenue: revenue.reduce((sum, r) => sum + (r.TOTAL_REVENUE || 0), 0),
     customers: revenue.reduce((sum, r) => sum + (r.UNIQUE_CUSTOMERS || 0), 0),
   };
+
+  // Block render until authorized (prevents flicker + stops guests)
+  if (!allowed) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-gray-600">
+        Checking access...
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -70,22 +133,22 @@ export default function AdminRevenuePage() {
             {/* View Toggle */}
             <div className="flex items-center gap-2 bg-gray-100 p-1 rounded-xl">
               <button
-                onClick={() => setViewMode('table')}
+                onClick={() => setViewMode("table")}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all ${
-                  viewMode === 'table'
-                    ? 'bg-white text-[#5B2C91] shadow-md'
-                    : 'text-gray-600 hover:text-gray-900'
+                  viewMode === "table"
+                    ? "bg-white text-[#5B2C91] shadow-md"
+                    : "text-gray-600 hover:text-gray-900"
                 }`}
               >
                 <Table size={18} />
                 <span>Data Table</span>
               </button>
               <button
-                onClick={() => setViewMode('tableau')}
+                onClick={() => setViewMode("tableau")}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all ${
-                  viewMode === 'tableau'
-                    ? 'bg-white text-[#5B2C91] shadow-md'
-                    : 'text-gray-600 hover:text-gray-900'
+                  viewMode === "tableau"
+                    ? "bg-white text-[#5B2C91] shadow-md"
+                    : "text-gray-600 hover:text-gray-900"
                 }`}
               >
                 <BarChart3 size={18} />
@@ -101,7 +164,9 @@ export default function AdminRevenuePage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           <div className="bg-white rounded-xl shadow-md p-5 border-l-4 border-orange-500">
             <p className="text-gray-500 text-sm font-medium">Total Restaurants</p>
-            <p className="text-3xl font-bold text-orange-600 mt-1">{totals.restaurants}</p>
+            <p className="text-3xl font-bold text-orange-600 mt-1">
+              {totals.restaurants}
+            </p>
           </div>
           <div className="bg-white rounded-xl shadow-md p-5 border-l-4 border-blue-500">
             <p className="text-gray-500 text-sm font-medium">Total Orders</p>
@@ -109,16 +174,20 @@ export default function AdminRevenuePage() {
           </div>
           <div className="bg-white rounded-xl shadow-md p-5 border-l-4 border-green-500">
             <p className="text-gray-500 text-sm font-medium">Total Revenue</p>
-            <p className="text-3xl font-bold text-green-600 mt-1">${totals.revenue.toFixed(2)}</p>
+            <p className="text-3xl font-bold text-green-600 mt-1">
+              ${totals.revenue.toFixed(2)}
+            </p>
           </div>
           <div className="bg-white rounded-xl shadow-md p-5 border-l-4 border-purple-500">
             <p className="text-gray-500 text-sm font-medium">Total Customers</p>
-            <p className="text-3xl font-bold text-purple-600 mt-1">{totals.customers}</p>
+            <p className="text-3xl font-bold text-purple-600 mt-1">
+              {totals.customers}
+            </p>
           </div>
         </div>
 
         {/* Content based on view mode */}
-        {viewMode === 'table' ? (
+        {viewMode === "table" ? (
           /* TABLE VIEW */
           <div className="space-y-6">
             {/* Excel Download Button */}
@@ -150,7 +219,9 @@ export default function AdminRevenuePage() {
             {!loading && !error && revenue.length > 0 && (
               <div className="bg-white rounded-xl shadow-lg overflow-hidden">
                 <div className="px-6 py-4 bg-gray-50 border-b">
-                  <h2 className="text-xl font-semibold text-gray-900">Revenue by Restaurant</h2>
+                  <h2 className="text-xl font-semibold text-gray-900">
+                    Revenue by Restaurant
+                  </h2>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full">
@@ -174,8 +245,8 @@ export default function AdminRevenuePage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                      {revenue.map((restaurant, index) => (
-                        <tr 
+                      {revenue.map((restaurant) => (
+                        <tr
                           key={restaurant.RESTAURANT_NAME}
                           className="hover:bg-gray-50 transition-colors"
                         >
@@ -197,7 +268,6 @@ export default function AdminRevenuePage() {
                         </tr>
                       ))}
                     </tbody>
-                    {/* Totals Row */}
                     <tfoot className="bg-gray-50 border-t-2 border-gray-200">
                       <tr>
                         <td className="px-6 py-4 text-sm font-bold text-gray-900">
@@ -209,9 +279,7 @@ export default function AdminRevenuePage() {
                         <td className="px-6 py-4 text-sm text-right font-bold text-green-600">
                           ${totals.revenue.toFixed(2)}
                         </td>
-                        <td className="px-6 py-4 text-sm text-right text-gray-500">
-                          —
-                        </td>
+                        <td className="px-6 py-4 text-sm text-right text-gray-500">—</td>
                         <td className="px-6 py-4 text-sm text-right font-bold text-gray-900">
                           {totals.customers}
                         </td>
@@ -222,7 +290,6 @@ export default function AdminRevenuePage() {
               </div>
             )}
 
-            {/* Empty State */}
             {!loading && !error && revenue.length === 0 && (
               <div className="bg-white rounded-xl shadow-lg p-12 text-center">
                 <p className="text-gray-500">No revenue data available</p>
@@ -242,10 +309,9 @@ export default function AdminRevenuePage() {
                   Powered by Tableau - Click and interact with the visualizations
                 </p>
               </div>
-              
+
               <div className="p-4">
-                {/* Tableau Embed using iframe - more reliable than JS API */}
-                <div className="w-full" style={{ minHeight: '700px' }}>
+                <div className="w-full" style={{ minHeight: "700px" }}>
                   <iframe
                     src="https://public.tableau.com/views/TasteOfHarlem/Dashboard1?:language=en-US&:display_count=n&:origin=viz_share_link&:showVizHome=no&:embed=true"
                     width="100%"
@@ -258,14 +324,13 @@ export default function AdminRevenuePage() {
               </div>
             </div>
 
-            {/* Context Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="bg-white rounded-lg shadow-md p-4">
                 <h3 className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
                   <span>📊</span> What This Shows
                 </h3>
                 <p className="text-sm text-gray-600">
-                  Platform-wide metrics including total orders, revenue distribution, 
+                  Platform-wide metrics including total orders, revenue distribution,
                   and restaurant performance comparisons.
                 </p>
               </div>
@@ -274,8 +339,8 @@ export default function AdminRevenuePage() {
                   <span>👥</span> Who Uses This
                 </h3>
                 <p className="text-sm text-gray-600">
-                  Platform administrators and investors tracking overall business 
-                  health and growth metrics.
+                  Platform administrators and investors tracking overall business health
+                  and growth metrics.
                 </p>
               </div>
               <div className="bg-white rounded-lg shadow-md p-4">
@@ -283,8 +348,8 @@ export default function AdminRevenuePage() {
                   <span>💡</span> Pro Tip
                 </h3>
                 <p className="text-sm text-gray-600">
-                  Click on chart elements to filter data. Hover for details. 
-                  Use the toolbar for additional options.
+                  Click on chart elements to filter data. Hover for details. Use the
+                  toolbar for additional options.
                 </p>
               </div>
             </div>

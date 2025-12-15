@@ -104,14 +104,31 @@ export default function LoginPage() {
         return;
       }
 
-      const user: AuthUser | undefined = data?.user;
-      if (!user?.USER_ID) {
-        throw new Error("Login succeeded but no user payload returned.");
+      // --- LOGIN SUCCESS PATH ---
+      const rawUser = data?.user ?? data; // supports either { user: {...} } or direct payload
+
+      const userId = Number(rawUser?.USER_ID ?? rawUser?.user_id ?? rawUser?.id);
+      if (!Number.isFinite(userId) || userId <= 0) {
+        throw new Error("Login succeeded but no user id returned.");
       }
 
-      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user));
-      localStorage.setItem("user_id", String(user.USER_ID));
+      // Normalize role field to lowercase (matches your guards)
+      const role = (rawUser?.ROLES ?? rawUser?.roles ?? rawUser?.role ?? "")
+        .toString()
+        .toLowerCase();
+
+      const normalizedUser: AuthUser = {
+        USER_ID: userId,
+        USER_NAME: (rawUser?.USER_NAME ?? rawUser?.username ?? rawUser?.name ?? "User").toString(),
+        EMAIL: (rawUser?.EMAIL ?? rawUser?.email ?? formData.email).toString(),
+        ROLES: role || "customer",
+      };
+
+      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(normalizedUser));
+      localStorage.setItem("user_id", String(normalizedUser.USER_ID));
       window.location.href = redirectTo;
+      return;
+
     } catch (err: any) {
       setErrorMsg(err?.message || "Something went wrong.");
     } finally {
