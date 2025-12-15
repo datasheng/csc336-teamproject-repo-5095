@@ -58,8 +58,9 @@ export default function CheckoutPage() {
   // Pricing UI (frontend-only; not sent to backend)
   const subtotal = getCartTotal();
   const deliveryFee = 3.99;
+  const serviceFee = 2.99;
   const tax = subtotal * 0.08;
-  const total = subtotal + deliveryFee + tax;
+  const total = subtotal + deliveryFee + serviceFee + tax;
 
   // Backend-required fields derived from cart
   const restaurantId = useMemo(() => {
@@ -227,6 +228,10 @@ export default function CheckoutPage() {
                     <div className="flex justify-between text-gray-600">
                       <span>Delivery Fee</span>
                       <span>${deliveryFee.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-gray-600">
+                      <span>Service Fee</span>
+                      <span>${serviceFee.toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between text-gray-600">
                       <span>Tax</span>
