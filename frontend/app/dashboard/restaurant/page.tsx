@@ -1,20 +1,20 @@
 // frontend/app/dashboard/restaurant/page.tsx
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { 
-  ArrowLeft, 
-  TrendingUp, 
-  ShoppingBag, 
-  DollarSign, 
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import {
+  ArrowLeft,
+  TrendingUp,
+  ShoppingBag,
+  DollarSign,
   Users,
   Clock,
   ChefHat,
   LogIn,
-  AlertCircle
-} from 'lucide-react';
+  AlertCircle,
+  Download,
+} from "lucide-react";
 
 interface Order {
   ORDER_ID: number;
@@ -45,146 +45,188 @@ interface AuthUser {
   RESTAURANT_ID?: number;
 }
 
-type AccessState = 'loading' | 'unauthorized' | 'not_logged_in' | 'authorized';
+type AccessState = "loading" | "unauthorized" | "not_logged_in" | "authorized";
+
+const AUTH_STORAGE_KEY = "auth_user";
+
+async function safeJson(res: Response) {
+  try {
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
 
 export default function RestaurantDashboardPage() {
-  const router = useRouter();
-  const [accessState, setAccessState] = useState<AccessState>('loading');
+  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
+
+  const [accessState, setAccessState] = useState<AccessState>("loading");
   const [user, setUser] = useState<AuthUser | null>(null);
-  
+
   const [stats, setStats] = useState<RestaurantStats | null>(null);
   const [recentOrders, setRecentOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [restaurantId, setRestaurantId] = useState<number | null>(null);
-  const [restaurantName, setRestaurantName] = useState<string>('Your Restaurant');
 
-  // Check authentication and authorization
+  const [restaurantId, setRestaurantId] = useState<number | null>(null);
+  const [restaurantName, setRestaurantName] = useState<string>("Your Restaurant");
+
   useEffect(() => {
-    const checkAccess = () => {
-      const authRaw = localStorage.getItem('auth_user');
-      
-      if (!authRaw) {
-        setAccessState('not_logged_in');
+    const authRaw = typeof window !== "undefined" ? localStorage.getItem(AUTH_STORAGE_KEY) : null;
+
+    if (!authRaw) {
+      setAccessState("not_logged_in");
+      return;
+    }
+
+    try {
+      const userData: AuthUser = JSON.parse(authRaw);
+      setUser(userData);
+
+      const role = (userData.ROLES ?? "").toString().toLowerCase();
+      const isOwner = role === "restaurant_owner";
+
+      if (!isOwner) {
+        setAccessState("unauthorized");
         return;
       }
 
-      try {
-        const userData: AuthUser = JSON.parse(authRaw);
-        setUser(userData);
+      setAccessState("authorized");
 
-        // Check if user is a restaurant owner
-        const isOwner = userData.ROLES === 'restaurant_owner' || 
-                        userData.ROLES === 'owner' ||
-                        userData.RESTAURANT_ID != null;
-
-        if (isOwner) {
-          setAccessState('authorized');
-          setRestaurantId(userData.RESTAURANT_ID || 2); // Default to FUMO Harlem (ID 2) for demo
-        } else {
-          setAccessState('unauthorized');
-        }
-      } catch {
-        setAccessState('not_logged_in');
-      }
-    };
-
-    checkAccess();
+      const rid = Number(userData.RESTAURANT_ID ?? 2);
+      setRestaurantId(Number.isFinite(rid) && rid > 0 ? rid : 2);
+    } catch {
+      setAccessState("not_logged_in");
+    }
   }, []);
 
-  // Fetch dashboard data once authorized
   useEffect(() => {
-    if (accessState !== 'authorized' || !restaurantId) return;
+    if (accessState !== "authorized" || !restaurantId) return;
 
     const fetchData = async () => {
       try {
         setLoading(true);
-        
-        // Fetch all revenue data and filter for this restaurant
-        const restaurantRes = await fetch(`http://localhost:8000/api/restaurants/${restaurantId}`);
-        const restaurantData = await restaurantRes.json();
-        const myRestaurantName = restaurantData?.restaurant?.RESTAURANT_NAME || '';
-        console.log('Full restaurant response:', restaurantData);
-        console.log('Fetched restaurant name:', myRestaurantName); // Debug log
-       
-        // Then fetch revenue data
-        const revenueRes = await fetch('http://localhost:8000/api/reports/revenue');
-        const revenueData = await revenueRes.json();
-        
-        // Find this restaurant's stats
-        const allStats: RestaurantStats[] = Array.isArray(revenueData) ? revenueData : revenueData.data || [];        
-        
-        console.log('Looking for:', myRestaurantName); // Debug log
-        console.log('Available restaurants:', allStats.map(r => r.RESTAURANT_NAME)); // Debug log
+        setError(null);
 
-        // Match by the name we just fetched
-        const myStats = allStats.find(r => 
-          r.RESTAURANT_NAME.toLowerCase() === myRestaurantName.toLowerCase()
-        ) || allStats[0];
-        
-        console.log('Found stats:', myStats); // Debug log
-        
-        if (myStats) {
-          setStats(myStats);
-          setRestaurantName(myStats.RESTAURANT_NAME);
+        const restaurantRes = await fetch(`${API_BASE}/api/restaurants/${restaurantId}`);
+        const restaurantJson = await safeJson(restaurantRes);
+
+        if (!restaurantRes.ok) {
+          const msg =
+            restaurantJson?.detail ||
+            restaurantJson?.message ||
+            `Failed to fetch restaurant details (HTTP ${restaurantRes.status})`;
+          throw new Error(msg);
         }
 
-        // Fetch real orders for this restaurant if endpoint exists, otherwise use mock data
-        // In production: fetch(`http://localhost:8000/api/orders/restaurant/${restaurantId}`)
+        const myRestaurantName =
+          restaurantJson?.restaurant?.RESTAURANT_NAME ||
+          restaurantJson?.RESTAURANT_NAME ||
+          "Your Restaurant";
+
+        setRestaurantName(myRestaurantName);
+
+        const revenueRes = await fetch(`${API_BASE}/api/reports/revenue`);
+        const revenueJson = await safeJson(revenueRes);
+
+        if (!revenueRes.ok) {
+          const msg =
+            revenueJson?.detail ||
+            revenueJson?.message ||
+            `Failed to fetch revenue data (HTTP ${revenueRes.status})`;
+          throw new Error(msg);
+        }
+
+        const allStats: RestaurantStats[] = Array.isArray(revenueJson)
+          ? revenueJson
+          : Array.isArray(revenueJson?.data)
+          ? revenueJson.data
+          : [];
+
+        const mine =
+          allStats.find(
+            (r) =>
+              (r?.RESTAURANT_NAME ?? "").toString().toLowerCase() ===
+              myRestaurantName.toLowerCase()
+          ) ?? null;
+
+        if (mine) {
+          setStats(mine);
+        } else {
+          setStats({
+            RESTAURANT_NAME: myRestaurantName,
+            TOTAL_ORDERS: 0,
+            TOTAL_REVENUE: 0,
+            AVG_ORDER_VALUE: 0,
+            UNIQUE_CUSTOMERS: 0,
+          });
+        }
+
         setRecentOrders([
           {
             ORDER_ID: 127,
             ORDER_DATE: new Date().toISOString(),
             TOTAL_AMOUNT: 52.97,
-            STATUS: 'PREPARING',
-            USER_NAME: 'Emily S.',
+            STATUS: "PREPARING",
+            USER_NAME: "Emily S.",
             items: [
-              { ITEM_NAME: 'Margherita Pizza', QUANTITY: 1, PRICE: 18.99 },
-              { ITEM_NAME: 'Pasta Carbonara', QUANTITY: 1, PRICE: 22.99 },
-              { ITEM_NAME: 'Tiramisu', QUANTITY: 1, PRICE: 10.99 }
-            ]
+              { ITEM_NAME: "Margherita Pizza", QUANTITY: 1, PRICE: 18.99 },
+              { ITEM_NAME: "Pasta Carbonara", QUANTITY: 1, PRICE: 22.99 },
+              { ITEM_NAME: "Tiramisu", QUANTITY: 1, PRICE: 10.99 },
+            ],
           },
           {
             ORDER_ID: 126,
             ORDER_DATE: new Date(Date.now() - 25 * 60000).toISOString(),
             TOTAL_AMOUNT: 38.98,
-            STATUS: 'OUT_FOR_DELIVERY',
-            USER_NAME: 'David L.',
-            items: [
-              { ITEM_NAME: 'Pepperoni Pizza', QUANTITY: 2, PRICE: 19.49 }
-            ]
+            STATUS: "OUT_FOR_DELIVERY",
+            USER_NAME: "David L.",
+            items: [{ ITEM_NAME: "Pepperoni Pizza", QUANTITY: 2, PRICE: 19.49 }],
           },
           {
             ORDER_ID: 125,
             ORDER_DATE: new Date(Date.now() - 55 * 60000).toISOString(),
             TOTAL_AMOUNT: 45.99,
-            STATUS: 'DELIVERED',
-            USER_NAME: 'John D.',
+            STATUS: "DELIVERED",
+            USER_NAME: "John D.",
             items: [
-              { ITEM_NAME: 'Lasagna', QUANTITY: 1, PRICE: 24.99 },
-              { ITEM_NAME: 'Caesar Salad', QUANTITY: 1, PRICE: 12.99 },
-              { ITEM_NAME: 'Garlic Bread', QUANTITY: 1, PRICE: 7.99 }
-            ]
-          }
+              { ITEM_NAME: "Lasagna", QUANTITY: 1, PRICE: 24.99 },
+              { ITEM_NAME: "Caesar Salad", QUANTITY: 1, PRICE: 12.99 },
+              { ITEM_NAME: "Garlic Bread", QUANTITY: 1, PRICE: 7.99 },
+            ],
+          },
         ]);
 
         setLoading(false);
       } catch (err: any) {
-        setError(err.message || 'Failed to load dashboard data');
+        setError(err?.message || "Failed to load dashboard data");
         setLoading(false);
       }
     };
 
     fetchData();
-  }, [accessState, restaurantId]);
+  }, [accessState, restaurantId, API_BASE]);
+
+  const downloadRestaurantExcel = () => {
+    if (!restaurantId) {
+      alert("No restaurant ID found for this account.");
+      return;
+    }
+    window.open(`${API_BASE}/api/reports/restaurant/${restaurantId}/excel`, "_blank");
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'PREPARING': return 'bg-yellow-100 text-yellow-800';
-      case 'OUT_FOR_DELIVERY': return 'bg-blue-100 text-blue-800';
-      case 'DELIVERED': return 'bg-green-100 text-green-800';
-      case 'PENDING': return 'bg-gray-100 text-gray-800';
-      default: return 'bg-purple-100 text-purple-800';
+      case "PREPARING":
+        return "bg-yellow-100 text-yellow-800";
+      case "OUT_FOR_DELIVERY":
+        return "bg-blue-100 text-blue-800";
+      case "DELIVERED":
+        return "bg-green-100 text-green-800";
+      case "PENDING":
+        return "bg-gray-100 text-gray-800";
+      default:
+        return "bg-purple-100 text-purple-800";
     }
   };
 
@@ -193,24 +235,21 @@ export default function RestaurantDashboardPage() {
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffMins = Math.floor(diffMs / 60000);
-    
-    if (diffMins < 1) return 'Just now';
+
+    if (diffMins < 1) return "Just now";
     if (diffMins < 60) return `${diffMins}m ago`;
     if (diffMins < 1440) return `${Math.floor(diffMins / 60)}h ago`;
     return date.toLocaleDateString();
   };
 
-  // Not logged in state
-  if (accessState === 'not_logged_in') {
+  if (accessState === "not_logged_in") {
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#F3EFF8] via-white to-[#FFE5E0] flex items-center justify-center p-4">
         <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full text-center">
           <div className="w-20 h-20 bg-gradient-to-br from-[#5B2C91] to-[#8B6FB0] rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
             <LogIn size={40} className="text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-[#2C3E50] mb-3">
-            Login Required
-          </h1>
+          <h1 className="text-2xl font-bold text-[#2C3E50] mb-3">Login Required</h1>
           <p className="text-[#7F8C8D] mb-6">
             Please sign in with your restaurant owner account to access this dashboard.
           </p>
@@ -220,10 +259,7 @@ export default function RestaurantDashboardPage() {
           >
             Sign In
           </Link>
-          <Link
-            href="/dashboard"
-            className="inline-block mt-4 text-[#5B2C91] hover:text-[#8B6FB0] font-medium"
-          >
+          <Link href="/dashboard" className="inline-block mt-4 text-[#5B2C91] hover:text-[#8B6FB0] font-medium">
             ← Back to Dashboards
           </Link>
         </div>
@@ -231,20 +267,15 @@ export default function RestaurantDashboardPage() {
     );
   }
 
-  // Unauthorized state (logged in but not a restaurant owner)
-  if (accessState === 'unauthorized') {
+  if (accessState === "unauthorized") {
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#F3EFF8] via-white to-[#FFE5E0] flex items-center justify-center p-4">
         <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full text-center">
           <div className="w-20 h-20 bg-gradient-to-br from-[#FF5722] to-[#FF6B4A] rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
             <AlertCircle size={40} className="text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-[#2C3E50] mb-3">
-            Access Restricted
-          </h1>
-          <p className="text-[#7F8C8D] mb-2">
-            This dashboard is only available to restaurant owners.
-          </p>
+          <h1 className="text-2xl font-bold text-[#2C3E50] mb-3">Access Restricted</h1>
+          <p className="text-[#7F8C8D] mb-2">This dashboard is only available to restaurant owners.</p>
           <p className="text-sm text-gray-500 mb-6">
             Logged in as: <span className="font-medium">{user?.EMAIL}</span>
           </p>
@@ -258,9 +289,9 @@ export default function RestaurantDashboardPage() {
             </Link>
             <button
               onClick={() => {
-                localStorage.removeItem('auth_user');
-                localStorage.removeItem('user_id');
-                window.location.href = '/login?redirect=/dashboard/restaurant';
+                localStorage.removeItem("auth_user");
+                localStorage.removeItem("user_id");
+                window.location.href = "/login?redirect=/dashboard/restaurant";
               }}
               className="flex-1 bg-gradient-to-r from-[#5B2C91] to-[#8B6FB0] text-white py-3 px-4 rounded-xl font-semibold hover:from-[#6B3CA1] hover:to-[#9B7FC0] transition-all"
             >
@@ -272,8 +303,7 @@ export default function RestaurantDashboardPage() {
     );
   }
 
-  // Loading state
-  if (accessState === 'loading' || loading) {
+  if (accessState === "loading" || loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -284,7 +314,6 @@ export default function RestaurantDashboardPage() {
     );
   }
 
-  // Error state
   if (error) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -296,26 +325,19 @@ export default function RestaurantDashboardPage() {
     );
   }
 
-  // Authorized - Show full dashboard
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
       <div className="bg-gradient-to-r from-[#FF5722] to-[#FF6B4A] text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Link 
-                href="/dashboard" 
-                className="text-orange-200 hover:text-white transition-colors"
-              >
+              <Link href="/dashboard" className="text-orange-200 hover:text-white transition-colors">
                 <ArrowLeft size={20} />
               </Link>
               <ChefHat size={28} />
               <div>
                 <h1 className="text-3xl font-bold">{restaurantName}</h1>
-                <p className="text-orange-200 text-sm">
-                  Welcome Back, {user?.USER_NAME || 'Owner'}
-                </p>
+                <p className="text-orange-200 text-sm">Welcome Back, {user?.USER_NAME || "Owner"}</p>
               </div>
             </div>
             <div className="text-right text-sm text-orange-200">
@@ -327,7 +349,6 @@ export default function RestaurantDashboardPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Stats Cards */}
         {stats && (
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
             <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-blue-500">
@@ -347,7 +368,7 @@ export default function RestaurantDashboardPage() {
                 <div>
                   <p className="text-gray-500 text-sm font-medium">Total Revenue</p>
                   <p className="text-3xl font-bold text-gray-900 mt-1">
-                    ${stats.TOTAL_REVENUE.toFixed(2)}
+                    ${Number(stats.TOTAL_REVENUE).toFixed(2)}
                   </p>
                 </div>
                 <div className="bg-green-100 p-3 rounded-full">
@@ -361,7 +382,7 @@ export default function RestaurantDashboardPage() {
                 <div>
                   <p className="text-gray-500 text-sm font-medium">Avg Order Value</p>
                   <p className="text-3xl font-bold text-gray-900 mt-1">
-                    ${stats.AVG_ORDER_VALUE.toFixed(2)}
+                    ${Number(stats.AVG_ORDER_VALUE).toFixed(2)}
                   </p>
                 </div>
                 <div className="bg-orange-100 p-3 rounded-full">
@@ -384,7 +405,6 @@ export default function RestaurantDashboardPage() {
           </div>
         )}
 
-        {/* Recent Orders */}
         <div className="bg-white rounded-xl shadow-lg overflow-hidden">
           <div className="px-6 py-4 border-b bg-gray-50">
             <div className="flex items-center justify-between">
@@ -404,7 +424,7 @@ export default function RestaurantDashboardPage() {
                     <div className="flex items-center gap-3">
                       <span className="font-semibold text-gray-900">Order #{order.ORDER_ID}</span>
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(order.STATUS)}`}>
-                        {order.STATUS.replace('_', ' ')}
+                        {order.STATUS.replace("_", " ")}
                       </span>
                     </div>
                     <div className="flex items-center gap-2 mt-1 text-sm text-gray-500">
@@ -418,9 +438,7 @@ export default function RestaurantDashboardPage() {
                       )}
                     </div>
                   </div>
-                  <span className="text-lg font-bold text-green-600">
-                    ${order.TOTAL_AMOUNT.toFixed(2)}
-                  </span>
+                  <span className="text-lg font-bold text-green-600">${order.TOTAL_AMOUNT.toFixed(2)}</span>
                 </div>
 
                 {order.items && order.items.length > 0 && (
@@ -432,9 +450,7 @@ export default function RestaurantDashboardPage() {
                           <span className="text-gray-700">
                             {item.ITEM_NAME} × {item.QUANTITY}
                           </span>
-                          <span className="text-gray-600">
-                            ${(item.PRICE * item.QUANTITY).toFixed(2)}
-                          </span>
+                          <span className="text-gray-600">${(item.PRICE * item.QUANTITY).toFixed(2)}</span>
                         </div>
                       ))}
                     </div>
@@ -444,29 +460,24 @@ export default function RestaurantDashboardPage() {
             ))}
           </div>
 
-          {recentOrders.length === 0 && (
-            <div className="p-8 text-center text-gray-500">
-              No recent orders to display
-            </div>
-          )}
+          {recentOrders.length === 0 && <div className="p-8 text-center text-gray-500">No recent orders to display</div>}
         </div>
 
-        {/* Quick Actions */}
         <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Link 
-            href="/admin/revenue"
-            className="bg-white rounded-lg shadow p-4 hover:shadow-lg transition-shadow flex items-center gap-4"
+          <button
+            onClick={downloadRestaurantExcel}
+            className="bg-white rounded-lg shadow p-4 hover:shadow-lg transition-shadow flex items-center gap-4 text-left"
           >
-            <div className="bg-purple-100 p-3 rounded-full">
-              <TrendingUp size={24} className="text-purple-600" />
+            <div className="bg-green-100 p-3 rounded-full">
+              <Download size={24} className="text-green-600" />
             </div>
             <div>
-              <h3 className="font-semibold text-gray-800">View Platform Analytics</h3>
-              <p className="text-sm text-gray-500">Compare with other restaurants</p>
+              <h3 className="font-semibold text-gray-800">Download Your Revenue Report</h3>
+              <p className="text-sm text-gray-500">Export Excel for Restaurant ID: {restaurantId}</p>
             </div>
-          </Link>
-          
-          <Link 
+          </button>
+
+          <Link
             href="/restaurants"
             className="bg-white rounded-lg shadow p-4 hover:shadow-lg transition-shadow flex items-center gap-4"
           >
