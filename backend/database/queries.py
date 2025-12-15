@@ -141,18 +141,19 @@ def create_order(user_id, restaurant_id, total_amount):
         return None
     
     try:
-        # Calculate commission and fees (business logic)
-        platform_commission = total_amount * 0.15  # 15% commission
-        service_fee = 2.99  # Flat service fee
-        platform_profit = platform_commission + service_fee  # Profit from order
+        # Calculate commission and fees
+        platform_commission = total_amount * 0.15
+        service_fee = 2.99
+        platform_profit = platform_commission + service_fee
         
         cursor = conn.cursor()
         query = """
             INSERT INTO ORDERS (
                 USER_ID, RESTAURANT_ID, TOTAL_AMOUNT,
-                PLATFORM_COMMISSION, SERVICE_FEE, PLATFORM_PROFIT_ORDER
+                PLATFORM_COMMISSION, SERVICE_FEE, PLATFORM_PROFIT_ORDER,
+                STATUS
             )
-            VALUES (%s, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s, 'DELIVERED')
         """
         cursor.execute(query, (
             user_id, restaurant_id, total_amount,
@@ -303,7 +304,6 @@ def create_payment(order_id, amount, method):
         return None
 
 # ==================== DELIVERY QUERIES ====================
-
 def create_delivery(order_id, driver_id, delivery_address, estimated_time):
     """Create a new delivery record"""
     conn = get_db_connection()
@@ -312,14 +312,15 @@ def create_delivery(order_id, driver_id, delivery_address, estimated_time):
     
     try:
         # Calculate delivery fees
-        delivery_fee_total = 5.99  # Total delivery fee charged to customer
-        delivery_platform_cut = delivery_fee_total * 0.30  # Platform keeps 30%
+        delivery_fee_total = 3.99
+        delivery_platform_cut = 0.60
         
         cursor = conn.cursor()
         query = """
             INSERT INTO DELIVERIES 
-            (ORDER_ID, DRIVER_ID, ESTIMATED_TIME, DELIVERY_FEE_TOTAL, DELIVERY_PLATFORM_CUT, DELIVERY_STATUS)
-            VALUES (%s, %s, %s, %s, %s, 'ASSIGNED')
+            (ORDER_ID, DRIVER_ID, ESTIMATED_TIME, DELIVERY_FEE_TOTAL, 
+             DELIVERY_PLATFORM_CUT, DELIVERY_STATUS, ACTUAL_TIME)
+            VALUES (%s, %s, %s, %s, %s, 'DELIVERED', NOW())
         """
         cursor.execute(query, (
             order_id, driver_id, estimated_time,
