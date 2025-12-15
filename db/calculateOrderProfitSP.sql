@@ -1,25 +1,35 @@
+USE restaurant_ordering;
+
 DELIMITER //
 
-CREATE PROCEDURE CALCULATE_DELIVERY_PROFIT(IN input_delivery_id INT)
+CREATE PROCEDURE CALCULATE_ORDER_PROFIT(IN input_order_id INT)
 BEGIN
-    DECLARE deliveryTotal DECIMAL(10,2) DEFAULT 0.00;
-    DECLARE platformCut DECIMAL(10,2) DEFAULT 2.00;
+    DECLARE subtotal DECIMAL(10,2) DEFAULT 0.00;
+    DECLARE commission DECIMAL(10,2) DEFAULT 0.00;
+    DECLARE serviceFee DECIMAL(10,2) DEFAULT 2.99;
+    DECLARE totalProfit DECIMAL(10,2) DEFAULT 0.00;
 
-    -- Get the delivery fee from DELIVERIES table
-    SELECT DELIVERY_FEE_TOTAL
-    INTO deliveryTotal
-    FROM DELIVERIES
-    WHERE DELIVERY_ID = input_delivery_id;
+    -- Get subtotal from ORDERITEMS table
+    SELECT SUM(price * quantity)
+    INTO subtotal
+    FROM ORDERITEMS
+    WHERE ORDER_ID = input_order_id;
 
-    -- Handle NULL delivery fee
-    IF deliveryTotal IS NULL THEN
-        SET deliveryTotal = 0.00;
+    -- Handle NULL subtotal (in case of empty order)
+    IF subtotal IS NULL THEN
+        SET subtotal = 0.00;
     END IF;
 
-    -- Update platform cut
-    UPDATE DELIVERIES
-    SET DELIVERY_PLATFORM_CUT = platformCut
-    WHERE DELIVERY_ID = input_delivery_id;
+    -- Calculate
+    SET commission = subtotal * 0.15;
+    SET totalProfit = commission + serviceFee;
+
+    -- Update ORDERS table with results
+    UPDATE ORDERS
+    SET PLATFORM_COMMISSION = commission,
+        SERVICE_FEE = serviceFee,
+        PLATFORM_PROFIT_ORDER = totalProfit
+    WHERE ORDER_ID = input_order_id;
 END //
 
 DELIMITER ;
