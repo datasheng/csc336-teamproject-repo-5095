@@ -81,6 +81,7 @@ def place_order(order_data: OrderCreate):
         order_id = create_order(
             user_id=order_data.user_id,
             restaurant_id=order_data.RESTAURANT_ID,
+            subtotal=float(subtotal),
             total_amount=grand_total_float  # <-- store grand total in ORDERS.TOTAL_AMOUNT
         )
 
