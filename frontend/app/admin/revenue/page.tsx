@@ -34,6 +34,8 @@ interface RevenueData {
   AVG_ORDER_VALUE: number;
   UNIQUE_CUSTOMERS: number;
   PLATFORM_COMMISSION: number;
+  SERVICE_FEES: number;
+  DELIVERY_PROFIT: number;
 }
 
 type ViewMode = "table" | "tableau";
@@ -120,21 +122,18 @@ export default function AdminRevenuePage() {
     window.open(`${API_BASE}/api/reports/revenue/excel`, "_blank");
   };
 
-  // Totals
+  // use backend results
   const totals = {
     restaurants: revenue.length,
-
     orders: revenue.reduce((sum, r) => sum + (r.TOTAL_ORDERS || 0), 0),
-
     revenue: revenue.reduce((sum, r) => sum + (r.TOTAL_REVENUE || 0), 0),
-
     customers: revenue.reduce((sum, r) => sum + (r.UNIQUE_CUSTOMERS || 0), 0),
-
     platformCommission: revenue.reduce((sum, r) => sum + (r.PLATFORM_COMMISSION || 0), 0),
   };
 
-  const serviceFeeRevenue = totals.orders * SERVICE_FEE_PER_ORDER;
-  const deliveryCommissionRevenue = totals.orders * DELIVERY_COMMISSION_PER_ORDER;
+  // use actual DB values for service fees and delivery - need to add these to the API
+  const serviceFeeRevenue = revenue.reduce((sum, r) => sum + (r.SERVICE_FEES || 0), 0);
+  const deliveryCommissionRevenue = revenue.reduce((sum, r) => sum + (r.DELIVERY_PROFIT || 0), 0);
   const totalPlatformRevenue = totals.platformCommission + serviceFeeRevenue + deliveryCommissionRevenue;
 
 

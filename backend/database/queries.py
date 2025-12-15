@@ -134,7 +134,7 @@ def get_menu_item_by_id(menu_item_id):
 
 # ==================== ORDER QUERIES ====================
 
-def create_order(user_id, restaurant_id, total_amount):
+def create_order(user_id, restaurant_id, subtotal, total_amount):
     """Create a new order with profit tracking"""
     conn = get_db_connection()
     if not conn:
@@ -142,7 +142,7 @@ def create_order(user_id, restaurant_id, total_amount):
     
     try:
         # Calculate commission and fees
-        platform_commission = total_amount * 0.15
+        platform_commission = subtotal * 0.15
         service_fee = 2.99
         platform_profit = platform_commission + service_fee
         
@@ -378,45 +378,35 @@ def get_revenue_details():
 
 
 def get_revenue_report():
-    """
-    Get aggregated revenue report by restaurant (for Excel export)
-    Returns summary with total orders, revenue, avg order value, unique customers per restaurant
-    """
+    """Get revenue data with actual fees from database"""
     conn = get_db_connection()
     if not conn:
-        return None
+        return []
     
     cursor = conn.cursor(dictionary=True)
     
-    try:
-        query = """
-            SELECT 
-                r.RESTAURANT_NAME,
-                COUNT(DISTINCT o.ORDER_ID) as TOTAL_ORDERS,
-                COALESCE(SUM(o.TOTAL_AMOUNT), 0) as TOTAL_REVENUE,
-                COALESCE(AVG(o.TOTAL_AMOUNT), 0) as AVG_ORDER_VALUE,
-                COUNT(DISTINCT o.USER_ID) as UNIQUE_CUSTOMERS
-            FROM RESTAURANT r
-            LEFT JOIN ORDERS o ON r.RESTAURANT_ID = o.RESTAURANT_ID
-            WHERE o.ORDER_ID IS NOT NULL
-            GROUP BY r.RESTAURANT_ID, r.RESTAURANT_NAME
-            ORDER BY TOTAL_REVENUE DESC
-        """
-        
-        cursor.execute(query)
-        results = cursor.fetchall()
-        
-        cursor.close()
-        conn.close()
-        
-        return results
-        
-    except Exception as e:
-        print(f"Error generating revenue report: {e}")
-        cursor.close()
-        conn.close()
-        return None
-    
+    query = """
+        SELECT 
+            r.RESTAURANT_NAME,
+            COUNT(o.ORDER_ID) as TOTAL_ORDERS,
+            SUM(o.TOTAL_AMOUNT) as TOTAL_REVENUE,
+            AVG(o.TOTAL_AMOUNT) as AVG_ORDER_VALUE,
+            COUNT(DISTINCT o.USER_ID) as UNIQUE_CUSTOMERS,
+            SUM(o.PLATFORM_COMMISSION) as PLATFORM_COMMISSION,
+            SUM(o.SERVICE_FEE) as SERVICE_FEES,
+            SUM(COALESCE(d.DELIVERY_PLATFORM_CUT, 0)) as DELIVERY_PROFIT
+        FROM ORDERS o
+        JOIN RESTAURANT r ON o.RESTAURANT_ID = r.RESTAURANT_ID
+        LEFT JOIN DELIVERIES d ON o.ORDER_ID = d.ORDER_ID
+        WHERE o.STATUS = 'DELIVERED'
+        GROUP BY r.RESTAURANT_ID, r.RESTAURANT_NAME
+        ORDER BY TOTAL_REVENUE DESC
+    """
+    cursor.execute(query)
+    report_data = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    return report_data
 
 # ==================== DELIVERY QUERIES ====================
 

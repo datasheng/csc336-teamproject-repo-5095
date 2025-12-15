@@ -35,7 +35,7 @@ def _to_int(x: Any, default: int = 0) -> int:
 def get_revenue_data():
     """
     Get revenue data for all restaurants
-    Returns aggregated statistics per restaurant + commission fields (investor view)
+    Returns aggregated statistics per restaurant (from database)
     """
     try:
         report = get_revenue_report()
@@ -51,30 +51,13 @@ def get_revenue_data():
             print(f"⚠️ Expected list, got {type(report)}")
             return []
 
-        enriched: List[Dict[str, Any]] = []
-        for row in report:
-            if not isinstance(row, dict):
-                continue
-
-            total_revenue = _to_float(row.get("TOTAL_REVENUE"), 0.0)
-            platform_commission = round(total_revenue * COMMISSION_RATE, 2)
-            net_restaurant_revenue = round(total_revenue - platform_commission, 2)
-
-            enriched.append(
-                {
-                    **row,
-                    "COMMISSION_RATE": COMMISSION_RATE,
-                    "PLATFORM_COMMISSION": platform_commission,
-                    "NET_RESTAURANT_REVENUE": net_restaurant_revenue,
-                }
-            )
-
-        return enriched
+        # Just return the data as-is from the database query
+        # The query already includes PLATFORM_COMMISSION, SERVICE_FEES, DELIVERY_PROFIT
+        return report
 
     except Exception as e:
         print(f"❌ Error in get_revenue_data: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to generate revenue report: {str(e)}")
-
 
 @router.get("/revenue/details")
 def get_detailed_revenue():
@@ -420,3 +403,171 @@ def download_restaurant_revenue_excel(restaurant_id: int):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Excel generation failed: {str(e)}")
+
+@router.get("/debug")
+def debug_orders():
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    
+    cursor.execute("SELECT STATUS, COUNT(*) as count FROM ORDERS GROUP BY STATUS")
+    statuses = cursor.fetchall()
+    
+    cursor.execute("SELECT COUNT(*) as count FROM INVESTOR_PROFIT_VIEW")
+    view_count = cursor.fetchone()['count']
+    
+    cursor.execute("SELECT SUM(TOTAL_PLATFORM_PROFIT) as total FROM INVESTOR_PROFIT_VIEW")
+    view_profit = cursor.fetchone()['total']
+    
+    cursor.close()
+    conn.close()
+    
+    return {
+        "order_statuses": statuses,
+        "investor_view_count": view_count,
+        "investor_view_profit": float(view_profit) if view_profit else 0
+    }
+
+
+@router.get("/debug/breakdown")
+def debug_breakdown():
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    
+    # Get totals from ORDERS table
+    cursor.execute("""
+        SELECT 
+            COUNT(*) as total_orders,
+            SUM(TOTAL_AMOUNT) as gross_revenue,
+            SUM(PLATFORM_COMMISSION) as total_commission,
+            SUM(SERVICE_FEE) as total_service_fees,
+            SUM(PLATFORM_PROFIT_ORDER) as total_order_profit
+        FROM ORDERS
+        WHERE STATUS = 'DELIVERED'
+    """)
+    orders_totals = cursor.fetchone()
+    
+    # Get delivery totals
+    cursor.execute("""
+        SELECT 
+            COUNT(*) as total_deliveries,
+            SUM(DELIVERY_FEE_TOTAL) as total_delivery_fees,
+            SUM(DELIVERY_PLATFORM_CUT) as total_delivery_profit
+        FROM DELIVERIES
+    """)
+    delivery_totals = cursor.fetchone()
+    
+    # Get investor view total
+    cursor.execute("SELECT SUM(TOTAL_PLATFORM_PROFIT) as view_profit FROM INVESTOR_PROFIT_VIEW")
+    view_profit = cursor.fetchone()['view_profit']
+    
+    cursor.close()
+    conn.close()
+    
+    # Calculate what frontend shows
+    orders = float(orders_totals['total_orders'] or 0)
+    commission = float(orders_totals['total_commission'] or 0)
+    service_fees_from_db = float(orders_totals['total_service_fees'] or 0)
+    delivery_profit = float(delivery_totals['total_delivery_profit'] or 0)
+    
+    # Frontend calculation
+    frontend_service_fees = orders * 2.99
+    frontend_delivery_commission = orders * 0.60
+    frontend_total = commission + frontend_service_fees + frontend_delivery_commission
+    
+    return {
+        "from_database": {
+            "orders": orders_totals,
+            "deliveries": delivery_totals,
+            "investor_view_profit": float(view_profit) if view_profit else 0
+        },
+        "frontend_calculation": {
+            "commission_from_db": commission,
+            "service_fees_calculated": frontend_service_fees,
+            "delivery_commission_calculated": frontend_delivery_commission,
+            "total_platform_revenue": frontend_total
+        },
+        "comparison": {
+            "frontend_total": frontend_total,
+            "tableau_total": float(view_profit) if view_profit else 0,
+            "difference": frontend_total - (float(view_profit) if view_profit else 0)
+        }
+    }
+
+@router.get("/debug/delivery-count")
+def debug_delivery_count():
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    
+    cursor.execute("SELECT COUNT(*) as order_count FROM ORDERS WHERE STATUS = 'DELIVERED'")
+    orders = cursor.fetchone()['order_count']
+    
+    cursor.execute("SELECT COUNT(*) as delivery_count FROM DELIVERIES")
+    deliveries = cursor.fetchone()['delivery_count']
+    
+    cursor.execute("SELECT COUNT(*) as matched FROM ORDERS o JOIN DELIVERIES d ON o.ORDER_ID = d.ORDER_ID WHERE o.STATUS = 'DELIVERED'")
+    matched = cursor.fetchone()['matched']
+    
+    cursor.close()
+    conn.close()
+    
+    return {
+        "delivered_orders": orders,
+        "delivery_records": deliveries,
+        "matched_order_delivery_pairs": matched,
+        "unmatched": orders - matched
+    }
+
+@router.get("/debug/deliveries")
+def debug_deliveries():
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    
+    # Get distinct delivery platform cut values and their counts
+    cursor.execute("""
+        SELECT 
+            DELIVERY_PLATFORM_CUT,
+            COUNT(*) as count,
+            SUM(DELIVERY_PLATFORM_CUT) as subtotal
+        FROM DELIVERIES
+        GROUP BY DELIVERY_PLATFORM_CUT
+        ORDER BY DELIVERY_PLATFORM_CUT
+    """)
+    breakdown = cursor.fetchall()
+    
+    # Get total
+    cursor.execute("SELECT SUM(DELIVERY_PLATFORM_CUT) as total FROM DELIVERIES")
+    total = cursor.fetchone()['total']
+    
+    cursor.close()
+    conn.close()
+    
+    return {
+        "delivery_cut_breakdown": breakdown,
+        "total_delivery_profit": float(total) if total else 0
+    }
+
+@router.get("/debug/investor-view")
+def debug_investor_view():
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    
+    cursor.execute("""
+        SELECT 
+            SUM(PLATFORM_COMMISSION) as total_commission,
+            SUM(SERVICE_FEE) as total_service_fee,
+            SUM(DELIVERY_PLATFORM_CUT) as total_delivery_cut,
+            SUM(TOTAL_PLATFORM_PROFIT) as total_profit
+        FROM INVESTOR_PROFIT_VIEW
+    """)
+    result = cursor.fetchone()
+    
+    cursor.close()
+    conn.close()
+    
+    return {
+        "commission": float(result['total_commission'] or 0),
+        "service_fee": float(result['total_service_fee'] or 0),
+        "delivery_cut": float(result['total_delivery_cut'] or 0),
+        "total_profit": float(result['total_profit'] or 0),
+        "calculated_sum": float(result['total_commission'] or 0) + float(result['total_service_fee'] or 0) + float(result['total_delivery_cut'] or 0)
+    }

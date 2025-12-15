@@ -55,7 +55,7 @@ def populate_orders_only():
                 order_total += price * quantity
             
             platform_commission = (order_total * Decimal('0.10')).quantize(Decimal('0.01'))
-            service_fee = Decimal('2.50')
+            service_fee = Decimal('2.99')
             platform_profit_order = (platform_commission + service_fee).quantize(Decimal('0.01'))
             
             # Insert order
