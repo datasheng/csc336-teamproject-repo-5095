@@ -119,7 +119,7 @@ export default function CartPage() {
               {/* Platform Profit Info */}
               <div className="mt-6 p-4 bg-gradient-to-r from-[#F3EFF8] to-[#FFE5E0] rounded-xl">
                 <p className="text-xs text-[#7F8C8D] text-center">
-                  💡 Platform earns ${(subtotal * 0.15 + serviceFee + deliveryFee * 0.30).toFixed(2)} from this order
+                  💡 Taste of Harlem earns ${(subtotal * 0.15 + serviceFee + deliveryFee * 0.15).toFixed(2)} from this order
                 </p>
               </div>
             </div>
